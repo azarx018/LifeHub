@@ -148,6 +148,10 @@
             <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Ringkasan</div>
             <div class="stats-mini-grid" id="dashStatsGrid"></div>
           </div>
+          <div class="dash-card donut-card" id="dashDonutCard">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/></svg> Progress Hari Ini</div>
+            <div class="donut-wrap"><div class="donut-loading">Memuat...</div></div>
+          </div>
         </div>
       </section>
 
@@ -197,6 +201,11 @@
         <div class="page-toolbar">
           <div class="search-box"><input type="text" id="journalSearch" placeholder="Cari jurnal..." class="search-input"/></div>
           <button class="btn btn-primary" id="btnAddJournal">+ Tulis</button>
+        </div>
+        <div class="habit-date-nav" id="journalDateNav">
+          <button id="journalPrevDay">‹</button>
+          <span id="journalCurrentDate"></span>
+          <button id="journalNextDay">›</button>
         </div>
         <div class="journal-calendar-wrap"><div id="journalCalendar" class="journal-calendar"></div></div>
         <div class="journal-list" id="journalList"></div>
@@ -312,6 +321,27 @@
             <div class="settings-item">
               <label>Reset Semua Data</label>
               <button class="btn btn-danger" id="btnReset">Reset</button>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-group-title">🔔 Notifikasi</div>
+            <div class="settings-item">
+              <label>Aktifkan Notifikasi</label>
+              <label class="toggle"><input type="checkbox" id="notifToggle"/><span class="toggle-slider"></span></label>
+            </div>
+            <div id="notifTimeSettings" style="display:none">
+              <div class="settings-item">
+                <label>⏰ Pengingat Pagi</label>
+                <input type="time" id="notifMorning" value="07:00" class="input-sm"/>
+              </div>
+              <div class="settings-item">
+                <label>🌙 Rekap Malam</label>
+                <input type="time" id="notifEvening" value="21:00" class="input-sm"/>
+              </div>
+              <div class="settings-item notif-note-item">
+                <p class="notif-note">⚠️ Notifikasi aktif saat app terbuka di browser</p>
+                <button class="btn btn-outline btn-sm" id="btnTestNotif">🔔 Test Notifikasi</button>
+              </div>
             </div>
           </div>
           <div class="settings-group">

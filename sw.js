@@ -1,5 +1,5 @@
 // ===== LIFEHUB SERVICE WORKER =====
-const CACHE_NAME = 'lifehub-v1';
+const CACHE_NAME = 'lifehub-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -22,6 +22,19 @@ self.addEventListener('activate', e => {
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
+  );
+});
+
+// ===== NOTIFICATION CLICK =====
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      return clients.openWindow('./');
+    })
   );
 });
 

@@ -104,6 +104,7 @@ const S = {
   todoSearch: '',
   habitDate: today(),
   sholatDate: today(),
+  journalDate: today(),
   journalSearch: '',
   settings: { name:'Azhar', darkMode:false, sleepTarget:8, waterTarget:8 },
   todos: [], habits: [], habitLogs: [], journals: [],
@@ -145,7 +146,89 @@ const QUOTES = [
   {text:"Seorang pemenang hanyalah seorang pemimpi yang tidak pernah menyerah.", author:"Nelson Mandela"},
 ];
 
-// ===== SKY / TIME SYSTEM =====
+// ===== DONUT CHART =====
+function buildDonutSVG(segments) {
+  const R = 48, SW = 13, SIZE = 116;
+  const C = 2 * Math.PI * R;
+  const cx = SIZE / 2, cy = SIZE / 2;
+  const GAP = 2.5;
+  const validSegs = segments.filter(s => s.total > 0);
+  if (!validSegs.length) {
+    return { svg: `<svg viewBox="0 0 ${SIZE} ${SIZE}" width="${SIZE}" height="${SIZE}"><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--border)" stroke-width="${SW}"/><text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="12" fill="var(--text3)">No data</text></svg>`, pct: 0 };
+  }
+  const totalWeight = validSegs.reduce((a, s) => a + s.total, 0);
+  const totalGap = GAP * validSegs.length;
+  const availPct = 100 - totalGap;
+  let offset = 0, arcs = '';
+  validSegs.forEach(s => {
+    const segPct = (s.total / totalWeight) * availPct;
+    const donePct = (Math.min(s.value, s.total) / s.total) * segPct;
+    const rot = -90 + (offset / 100 * 360);
+    const dashTotal = (segPct / 100 * C).toFixed(2);
+    const dashBg = (C - segPct / 100 * C).toFixed(2);
+    const dashDone = (donePct / 100 * C).toFixed(2);
+    const dashRest = (C - donePct / 100 * C).toFixed(2);
+    arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${s.color}28" stroke-width="${SW}" stroke-dasharray="${dashTotal} ${dashBg}" transform="rotate(${rot} ${cx} ${cy})"/>`;
+    if (donePct > 0.3) {
+      arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${s.color}" stroke-width="${SW}" stroke-linecap="round" stroke-dasharray="${dashDone} ${dashRest}" transform="rotate(${rot} ${cx} ${cy})"/>`;
+    }
+    offset += segPct + GAP;
+  });
+  const totalDone = segments.reduce((a, s) => a + s.value, 0);
+  const totalAll = segments.reduce((a, s) => a + s.total, 0);
+  const pct = totalAll > 0 ? Math.round(totalDone / totalAll * 100) : 0;
+  return { svg: `<svg viewBox="0 0 ${SIZE} ${SIZE}" width="${SIZE}" height="${SIZE}"><g>${arcs}</g><text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="19" font-weight="700" fill="var(--text)">${pct}%</text><text x="${cx}" y="${cy + 13}" text-anchor="middle" font-size="8" fill="var(--text3)">selesai hari ini</text></svg>`, pct };
+}
+
+// ===== NOTIFICATIONS =====
+let _notifTimers = [];
+
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) { showToast('Browser tidak mendukung notifikasi'); return false; }
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') { showToast('Notifikasi diblokir. Aktifkan di pengaturan browser.'); return false; }
+  const perm = await Notification.requestPermission();
+  return perm === 'granted';
+}
+
+async function showPushNotif(title, body) {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(title, { body, icon: './icon-192.png', badge: './icon-192.png', vibrate: [200, 100, 200] });
+  } catch(e) {
+    if (Notification.permission === 'granted') new Notification(title, { body, icon: './icon-192.png' });
+  }
+}
+
+async function scheduleNotifications() {
+  _notifTimers.forEach(t => clearTimeout(t));
+  _notifTimers = [];
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const notifEnabled = await KV.get('notif_enabled', false);
+  if (!notifEnabled) return;
+  const morningTime = await KV.get('notif_morning', '07:00');
+  const eveningTime = await KV.get('notif_evening', '21:00');
+  const name = S.settings.name || 'Kamu';
+
+  const scheduleAt = (timeStr, title, body) => {
+    const [h, m] = timeStr.split(':').map(Number);
+    const now2 = new Date();
+    const target = new Date();
+    target.setHours(h, m, 0, 0);
+    if (target <= now2) target.setDate(target.getDate() + 1);
+    const delay = target - now2;
+    const t = setTimeout(async () => {
+      await showPushNotif(title, body);
+      scheduleAt(timeStr, title, body); // reschedule for next day
+    }, delay);
+    _notifTimers.push(t);
+  };
+
+  scheduleAt(morningTime, '🌅 Selamat Pagi, LifeHub!', `Hei ${name}! Semangat hari ini. Cek habit & todo kamu yuk 💪`);
+  scheduleAt(eveningTime, '🌙 Rekap Malam LifeHub', `Hai ${name}! Jangan lupa rekap aktivitas hari ini sebelum tidur 📋`);
+}
+
+
 function updateSkyBackground() {
   const h = new Date().getHours();
   const dashHero = el('dashHero');
@@ -413,6 +496,34 @@ async function renderDashboard() {
       <div class="stats-mini-item"><div class="stats-mini-val">${journals.length}</div><div class="stats-mini-lbl">Jurnal</div></div>
     `;
   }
+
+  // Donut Chart
+  const donutCard = el('dashDonutCard');
+  if(donutCard) {
+    const sholatDone = Object.values(todaySholat.prayers || {}).filter(Boolean).length;
+    const todoActive = todos.filter(t => !t.archived);
+    const segments = [
+      { label: 'Todo',   value: todoActive.filter(t => t.done).length, total: todoActive.length,  color: '#6C63FF' },
+      { label: 'Habit',  value: doneHabits,  total: habits.length,                               color: '#FF6584' },
+      { label: 'Sholat', value: sholatDone,  total: 5,                                           color: '#43E97B' },
+      { label: 'Air',    value: wc,           total: wt,                                          color: '#44A8E0' },
+    ];
+    const { svg } = buildDonutSVG(segments);
+    const legendHtml = segments.map(s => `
+      <div class="donut-legend-item">
+        <span class="donut-legend-dot" style="background:${s.color}"></span>
+        <span class="donut-legend-label">${s.label}</span>
+        <span class="donut-legend-val">${s.value}/${s.total}</span>
+      </div>
+    `).join('');
+    donutCard.innerHTML = `
+      <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/></svg> Progress Hari Ini</div>
+      <div class="donut-wrap">
+        <div class="donut-svg-wrap">${svg}</div>
+        <div class="donut-legend">${legendHtml}</div>
+      </div>
+    `;
+  }
 }
 
 // ===== TODO =====
@@ -629,18 +740,46 @@ async function saveHabit() {
 async function renderJournal() {
   const journals = await DB.getAll('journals');
   S.journals = journals;
+
+  // Update nav date display
+  const dateEl = el('journalCurrentDate');
+  const isToday2 = S.journalDate === today();
+  if(dateEl) dateEl.textContent = isToday2 ? 'Hari Ini' : fmt(S.journalDate + 'T00:00:00');
+
+  // Disable next button if already at today
+  const nextBtn = el('journalNextDay');
+  if(nextBtn) nextBtn.style.opacity = isToday2 ? '0.3' : '1';
+
+  // Filter: if search active → show all matching, else show selected date
   const search = S.journalSearch.toLowerCase();
-  const filtered = search ? journals.filter(j => (j.title||'').toLowerCase().includes(search)||(j.content||'').toLowerCase().includes(search)) : journals;
-  const sorted = [...filtered].sort((a,b) => b.date.localeCompare(a.date));
+  let filtered;
+  if(search) {
+    filtered = journals.filter(j =>
+      (j.title||'').toLowerCase().includes(search) ||
+      (j.content||'').toLowerCase().includes(search)
+    ).sort((a,b) => b.date.localeCompare(a.date));
+  } else {
+    filtered = journals
+      .filter(j => j.date === S.journalDate)
+      .sort((a,b) => b.date.localeCompare(a.date));
+  }
+
   renderJournalCalendar(journals);
+
   const list = el('journalList'); if(!list) return;
   list.innerHTML = '';
-  if(!sorted.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📓</div><p>Belum ada jurnal</p></div>';
+
+  if(!filtered.length) {
+    const emptyMsg = search ? 'Jurnal tidak ditemukan' : `Belum ada jurnal untuk ${isToday2 ? 'hari ini' : fmt(S.journalDate+'T00:00:00')}`;
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></div>
+      <p>${emptyMsg}</p>
+    </div>`;
     return;
   }
+
   const moodEmoji = {happy:'😊',neutral:'😐',sad:'😔',excited:'🤩',tired:'😴'};
-  sorted.forEach(j => {
+  filtered.forEach(j => {
     const item = document.createElement('div');
     item.className = 'journal-item animate-in';
     const tags = (j.tags||[]).map(t => `<span class="tag-badge">#${t}</span>`).join('');
@@ -664,18 +803,27 @@ function renderJournalCalendar(journals) {
   cal.innerHTML = '';
   const days = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
   days.forEach(d => { const h = document.createElement('div'); h.className='jcal-header'; h.textContent=d; cal.appendChild(h); });
-  const now2 = new Date(); const year = now2.getFullYear(); const month = now2.getMonth();
+
+  // Show month of currently selected date
+  const selDate = new Date(S.journalDate + 'T12:00:00');
+  const year = selDate.getFullYear();
+  const month = selDate.getMonth();
   const first = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
+
   for(let i=0; i<first; i++) { const e = document.createElement('div'); e.className='jcal-day empty'; cal.appendChild(e); }
   for(let d=1; d<=daysInMonth; d++) {
     const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const hasEntry = journals.some(j => j.date === ds);
-    const isToday = ds === today();
+    const isToday3 = ds === today();
+    const isSelected = ds === S.journalDate;
     const div = document.createElement('div');
-    div.className = `jcal-day${hasEntry?' has-entry':''}${isToday?' today':''}`;
+    div.className = `jcal-day${hasEntry?' has-entry':''}${isToday3?' today':''}${isSelected&&!isToday3?' selected':''}`;
     div.textContent = d;
-    div.addEventListener('click', () => { if(hasEntry) { const j = journals.find(jj => jj.date===ds); if(j) openJournalView(j); } });
+    div.addEventListener('click', () => {
+      S.journalDate = ds;
+      renderJournal();
+    });
     cal.appendChild(div);
   }
 }
@@ -703,7 +851,9 @@ function openJournalModal(j=null) {
   el('journalMood').value = j ? (j.mood||'') : '';
   const moodBtns = qsa('#journalModal .mood-btn');
   moodBtns.forEach(b => b.classList.toggle('selected', b.dataset.mood === (j ? j.mood : '')));
-  el('journalModalTitle').textContent = j ? 'Edit Jurnal' : 'Tulis Jurnal';
+  el('journalModalTitle').textContent = j ? 'Edit Jurnal' : `Tulis Jurnal — ${S.journalDate === today() ? 'Hari Ini' : fmtShort(S.journalDate+'T00:00:00')}`;
+  // Store selected date so save uses correct date
+  el('journalEditId')._journalDate = j ? j.date : S.journalDate;
   openModal('journalModal');
   setTimeout(() => el('journalContent').focus(), 300);
 }
@@ -711,10 +861,17 @@ async function saveJournal() {
   const content = el('journalContent').value.trim();
   if(!content) { showToast('Isi jurnal tidak boleh kosong'); return; }
   const id = el('journalEditId').value || uid();
+  const saveDate = el('journalEditId')._journalDate || S.journalDate || today();
   const existing = await DB.get('journals', id) || {};
   const rawTags = el('journalTags').value;
   const tags = rawTags ? rawTags.split(',').map(t => t.trim()).filter(Boolean) : [];
-  await DB.put('journals', { ...existing, id, title: el('journalTitle').value.trim()||'Tanpa Judul', content, mood: el('journalMood').value||'', tags, date: existing.date||today(), updatedAt: today() });
+  await DB.put('journals', {
+    ...existing, id,
+    title: el('journalTitle').value.trim()||'Tanpa Judul',
+    content, mood: el('journalMood').value||'', tags,
+    date: existing.date || saveDate,
+    updatedAt: today()
+  });
   closeModal('journalModal');
   renderJournal();
   showToast('Jurnal disimpan 📓');
@@ -982,7 +1139,22 @@ async function renderGoals() {
       cb.addEventListener('change', async () => {
         const mid = cb.closest('.milestone-item').dataset.mid;
         const m = milestones.find(mm => mm.id===mid);
-        if(m) { m.done = cb.checked; await DB.put('milestones', m); renderGoals(); }
+        if(m) {
+          m.done = cb.checked;
+          await DB.put('milestones', m);
+          // Auto-calculate goal progress from milestones
+          const goalMilestones = milestones.filter(mm => mm.goalId === g.id);
+          if(goalMilestones.length > 0) {
+            const doneCount = goalMilestones.filter(mm => mm.id === mid ? cb.checked : mm.done).length;
+            const newProgress = Math.round(doneCount / goalMilestones.length * 100);
+            if(g.progress !== newProgress) {
+              g.progress = newProgress;
+              await DB.put('goals', g);
+            }
+          }
+          renderGoals();
+          showToast(cb.checked ? '✅ Milestone selesai! Progress diperbarui' : 'Milestone dibatalkan');
+        }
       });
     });
     qsa('.milestone-del', item).forEach(btn => {
@@ -990,6 +1162,16 @@ async function renderGoals() {
         e.stopPropagation();
         const mid = btn.dataset.mid;
         await DB.delete('milestones', mid);
+        // Recalculate after deletion
+        const remaining = milestones.filter(mm => mm.goalId === g.id && mm.id !== mid);
+        if(remaining.length > 0) {
+          const doneCount = remaining.filter(mm => mm.done).length;
+          g.progress = Math.round(doneCount / remaining.length * 100);
+          await DB.put('goals', g);
+        } else {
+          // No milestones left — reset to 0 or keep as is
+          // keep g.progress as is (manual)
+        }
         renderGoals();
       });
     });
@@ -1030,9 +1212,20 @@ async function saveMilestone() {
   if(!name) { showToast('Nama milestone tidak boleh kosong'); return; }
   const goalId = el('milestoneGoalId').value;
   await DB.put('milestones', { id: uid(), goalId, name, done: false });
+  // Recalculate goal progress
+  const allMilestones = await DB.getAll('milestones');
+  const goalMilestones = allMilestones.filter(m => m.goalId === goalId);
+  if(goalMilestones.length > 0) {
+    const goal = await DB.get('goals', goalId);
+    if(goal) {
+      const doneCount = goalMilestones.filter(m => m.done).length;
+      goal.progress = Math.round(doneCount / goalMilestones.length * 100);
+      await DB.put('goals', goal);
+    }
+  }
   closeModal('milestoneModal');
   renderGoals();
-  showToast('Milestone ditambah');
+  showToast('Milestone ditambah ✅');
 }
 
 // ===== STATS =====
@@ -1119,11 +1312,24 @@ async function renderStats() {
 }
 
 // ===== SETTINGS =====
-function renderSettings() {
+async function renderSettings() {
   const nameInput = el('settingName');
   if(nameInput) { nameInput.value = S.settings.name; nameInput.addEventListener('change', () => { S.settings.name = nameInput.value.trim()||'Azhar'; saveSettings(); }); }
   const dm = el('darkModeToggle');
   if(dm) { dm.checked = S.settings.darkMode; }
+
+  // Load notification state
+  const notifEnabled = await KV.get('notif_enabled', false);
+  const morningTime = await KV.get('notif_morning', '07:00');
+  const eveningTime = await KV.get('notif_evening', '21:00');
+  const notifToggle = el('notifToggle');
+  if(notifToggle) notifToggle.checked = notifEnabled;
+  const notifTimeSettings = el('notifTimeSettings');
+  if(notifTimeSettings) notifTimeSettings.style.display = notifEnabled ? 'block' : 'none';
+  const nMorning = el('notifMorning');
+  if(nMorning) nMorning.value = morningTime;
+  const nEvening = el('notifEvening');
+  if(nEvening) nEvening.value = eveningTime;
 }
 function saveSettings() {
   KV.set('lifehub_settings', S.settings);
@@ -1212,6 +1418,15 @@ function setupEvents() {
   el('btnAddJournal').addEventListener('click', () => openJournalModal());
   el('btnSaveJournal').addEventListener('click', saveJournal);
   el('journalSearch').addEventListener('input', e => { S.journalSearch = e.target.value; renderJournal(); });
+  el('journalPrevDay').addEventListener('click', () => {
+    const d = new Date(S.journalDate+'T12:00:00'); d.setDate(d.getDate()-1);
+    S.journalDate = d.toISOString().slice(0,10); renderJournal();
+  });
+  el('journalNextDay').addEventListener('click', () => {
+    if(S.journalDate >= today()) return; // tidak bisa maju melewati hari ini
+    const d = new Date(S.journalDate+'T12:00:00'); d.setDate(d.getDate()+1);
+    S.journalDate = d.toISOString().slice(0,10); renderJournal();
+  });
   document.getElementById('journalModal').addEventListener('click', e => {
     const btn = e.target.closest('.mood-btn'); if(!btn) return;
     qsa('#journalModal .mood-btn').forEach(b => b.classList.remove('selected'));
@@ -1262,6 +1477,34 @@ function setupEvents() {
     showToast('Data direset'); navigateTo('dashboard');
   }));
   el('settingName').addEventListener('change', e => { S.settings.name = e.target.value.trim()||'Azhar'; saveSettings(); el('greetName').textContent = S.settings.name; });
+
+  // NOTIFICATIONS
+  el('notifToggle').addEventListener('change', async e => {
+    if(e.target.checked) {
+      const granted = await requestNotificationPermission();
+      if(!granted) { e.target.checked = false; return; }
+    }
+    await KV.set('notif_enabled', e.target.checked);
+    el('notifTimeSettings').style.display = e.target.checked ? 'block' : 'none';
+    if(e.target.checked) { await scheduleNotifications(); showToast('🔔 Notifikasi diaktifkan'); }
+    else { _notifTimers.forEach(t => clearTimeout(t)); _notifTimers = []; showToast('🔕 Notifikasi dimatikan'); }
+  });
+  el('notifMorning').addEventListener('change', async e => {
+    await KV.set('notif_morning', e.target.value);
+    await scheduleNotifications();
+    showToast('⏰ Jadwal pagi diperbarui ke ' + e.target.value);
+  });
+  el('notifEvening').addEventListener('change', async e => {
+    await KV.set('notif_evening', e.target.value);
+    await scheduleNotifications();
+    showToast('🌙 Jadwal malam diperbarui ke ' + e.target.value);
+  });
+  el('btnTestNotif').addEventListener('click', async () => {
+    const granted = await requestNotificationPermission();
+    if(!granted) return;
+    await showPushNotif('🔔 Test LifeHub', `Hei ${S.settings.name}! Notifikasi berfungsi dengan baik ✅`);
+    showToast('Notifikasi test dikirim!');
+  });
 }
 
 // ===== PWA SERVICE WORKER =====
@@ -1289,5 +1532,7 @@ async function init() {
     navigateTo('dashboard');
   }, 1500);
   registerSW();
+  // Schedule notifications after SW is ready
+  setTimeout(() => scheduleNotifications(), 3000);
 }
 document.addEventListener('DOMContentLoaded', init);
