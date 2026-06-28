@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <title>LifeHub</title>
+  <meta name="description" content="Personal Life Management App — v1.2"/>
+  <meta name="theme-color" content="#6C63FF"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="LifeHub"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon-192.png"/>
+  <link rel="icon" type="image/png" href="icon-192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- Splash -->
+<div id="splash" class="splash">
+  <div class="splash-content">
+    <div class="splash-logo">
+      <svg viewBox="0 0 60 60" fill="none" width="72" height="72">
+        <circle cx="30" cy="30" r="30" fill="url(#sg)"/>
+        <defs><linearGradient id="sg" x1="0" y1="0" x2="60" y2="60"><stop offset="0%" stop-color="#6C63FF"/><stop offset="100%" stop-color="#FF6584"/></linearGradient></defs>
+        <path d="M18 30L26 38L42 22" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h1 class="splash-title">LifeHub</h1>
+    <p class="splash-sub">Your personal life manager</p>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app" class="app hidden">
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <svg viewBox="0 0 40 40" fill="none" width="28" height="28">
+          <circle cx="20" cy="20" r="20" fill="url(#ng)"/>
+          <defs><linearGradient id="ng" x1="0" y1="0" x2="40" y2="40"><stop offset="0%" stop-color="#6C63FF"/><stop offset="100%" stop-color="#FF6584"/></linearGradient></defs>
+          <path d="M12 20L18 26L28 14" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>LifeHub</span>
+      </div>
+      <button class="sidebar-close" id="sidebarClose">✕</button>
+    </div>
+    <ul class="nav-list">
+      <li><a href="#" class="nav-item active" data-page="dashboard">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+        <span>Dashboard</span></a></li>
+      <li><a href="#" class="nav-item" data-page="todo">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
+        <span>Todo</span></a></li>
+      <li><a href="#" class="nav-item" data-page="habit">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+        <span>Habit Tracker</span></a></li>
+      <li><a href="#" class="nav-item" data-page="journal">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></span>
+        <span>Journal</span></a></li>
+      <li><a href="#" class="nav-item" data-page="sholat">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></span>
+        <span>Sholat</span></a></li>
+      <li><a href="#" class="nav-item" data-page="sleep">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></span>
+        <span>Sleep Tracker</span></a></li>
+      <li><a href="#" class="nav-item" data-page="water">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg></span>
+        <span>Water Tracker</span></a></li>
+      <li><a href="#" class="nav-item" data-page="goals">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+        <span>Goals</span></a></li>
+      <li><a href="#" class="nav-item" data-page="stats">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+        <span>Statistik</span></a></li>
+      <li><a href="#" class="nav-item" data-page="settings">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span>
+        <span>Pengaturan</span></a></li>
+    </ul>
+  </nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- Main -->
+  <div class="main-wrapper">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn"><span></span><span></span><span></span></button>
+      <h2 class="topbar-title" id="topbarTitle">Dashboard</h2>
+      <div class="topbar-actions" id="topbarActions"></div>
+    </header>
+
+    <main class="page-container">
+
+      <!-- DASHBOARD -->
+      <section class="page active" id="page-dashboard">
+        <div class="dashboard-hero" id="dashHero">
+          <div class="greeting-block">
+            <p class="greeting-time" id="greetText">Selamat Pagi</p>
+            <h1 class="greeting-name" id="greetName">Azhar</h1>
+            <p class="greeting-date" id="greetDate"></p>
+          </div>
+          <div class="live-clock" id="liveClock"></div>
+        </div>
+        <div class="dash-grid">
+          <div class="dash-card mood-card">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg> Mood Hari Ini</div>
+            <div class="mood-row" id="dashMoodRow">
+              <button class="mood-btn" data-mood="happy" title="Senang">😊</button>
+              <button class="mood-btn" data-mood="neutral" title="Biasa">😐</button>
+              <button class="mood-btn" data-mood="sad" title="Sedih">😔</button>
+              <button class="mood-btn" data-mood="excited" title="Semangat">🤩</button>
+              <button class="mood-btn" data-mood="tired" title="Capek">😴</button>
+            </div>
+            <p class="mood-selected" id="dashMoodText">Pilih mood kamu</p>
+          </div>
+          <div class="dash-card water-quick-card">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg> Air Minum</div>
+            <div class="water-mini-progress"><div class="water-mini-fill" id="dashWaterFill"></div></div>
+            <p class="water-mini-text" id="dashWaterText">0 / 8 gelas</p>
+            <button class="btn-sm btn-primary" id="dashAddWater">+ Tambah</button>
+          </div>
+          <div class="dash-card habits-card">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Habit Hari Ini</div>
+            <div id="dashHabits" class="dash-habits-list"></div>
+          </div>
+          <div class="dash-card todos-card">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> Todo</div>
+            <div id="dashTodos" class="dash-todos-list"></div>
+          </div>
+          <div class="dash-card sholat-card">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Sholat Hari Ini</div>
+            <div id="dashSholat" class="dash-sholat-list"></div>
+          </div>
+          <div class="dash-card sleep-quick-card">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg> Tidur Semalam</div>
+            <div class="sleep-info-mini"><span id="dashSleepHours">—</span><small>jam tidur</small></div>
+          </div>
+          <div class="dash-card quote-card">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg> Quote Harian</div>
+            <p class="quote-text" id="dashQuote"></p>
+            <p class="quote-author" id="dashQuoteAuthor"></p>
+          </div>
+          <div class="dash-card stats-quick-card">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Ringkasan</div>
+            <div class="stats-mini-grid" id="dashStatsGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TODO -->
+      <section class="page" id="page-todo">
+        <div class="page-toolbar">
+          <div class="search-box"><input type="text" id="todoSearch" placeholder="Cari todo..." class="search-input"/></div>
+          <button class="btn btn-primary" id="btnAddTodo">+ Tambah</button>
+        </div>
+        <div class="filter-row">
+          <button class="filter-btn active" data-filter="all">Semua</button>
+          <button class="filter-btn" data-filter="pending">Aktif</button>
+          <button class="filter-btn" data-filter="done">Selesai</button>
+          <button class="filter-btn" data-filter="archived">Arsip</button>
+        </div>
+        <div class="filter-row">
+          <button class="filter-btn active" data-priority="all">Semua</button>
+          <button class="filter-btn" data-priority="high">🔴 High</button>
+          <button class="filter-btn" data-priority="medium">🟡 Medium</button>
+          <button class="filter-btn" data-priority="low">🟢 Low</button>
+        </div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="todoProgressFill" style="width:0%"></div></div>
+        <p class="progress-label" id="todoProgressLabel">0 dari 0 selesai</p>
+        <div class="todo-list" id="todoList"></div>
+      </section>
+
+      <!-- HABIT -->
+      <section class="page" id="page-habit">
+        <div class="page-toolbar">
+          <h3 class="section-title">Habit Tracker</h3>
+          <button class="btn btn-primary" id="btnAddHabit">+ Habit</button>
+        </div>
+        <div class="habit-date-nav">
+          <button id="habitPrevDay">‹</button>
+          <span id="habitCurrentDate"></span>
+          <button id="habitNextDay">›</button>
+        </div>
+        <div class="habit-list" id="habitList"></div>
+        <div class="habit-calendar-wrap">
+          <h4 class="sub-title">Kalender 7 Hari</h4>
+          <div id="habitCalendar" class="habit-calendar"></div>
+        </div>
+      </section>
+
+      <!-- JOURNAL -->
+      <section class="page" id="page-journal">
+        <div class="page-toolbar">
+          <div class="search-box"><input type="text" id="journalSearch" placeholder="Cari jurnal..." class="search-input"/></div>
+          <button class="btn btn-primary" id="btnAddJournal">+ Tulis</button>
+        </div>
+        <div class="journal-calendar-wrap"><div id="journalCalendar" class="journal-calendar"></div></div>
+        <div class="journal-list" id="journalList"></div>
+      </section>
+
+      <!-- SHOLAT -->
+      <section class="page" id="page-sholat">
+        <div class="sholat-header">
+          <h3 class="section-title">Sholat Tracker</h3>
+          <p class="sholat-date" id="sholatDateLabel"></p>
+        </div>
+        <div class="sholat-date-nav">
+          <button id="sholatPrevDay">‹</button>
+          <span id="sholatCurrentDate"></span>
+          <button id="sholatNextDay">›</button>
+        </div>
+        <div class="sholat-list" id="sholatList"></div>
+        <div class="sholat-stats">
+          <h4 class="sub-title">Statistik Mingguan</h4>
+          <div id="sholatWeekGrid" class="sholat-week-grid"></div>
+        </div>
+      </section>
+
+      <!-- SLEEP -->
+      <section class="page" id="page-sleep">
+        <div class="page-toolbar">
+          <h3 class="section-title">Sleep Tracker</h3>
+          <button class="btn btn-primary" id="btnAddSleep">+ Catat</button>
+        </div>
+        <div class="sleep-target-card card">
+          <div class="card-label">Target Tidur</div>
+          <div class="sleep-target-row">
+            <span id="sleepTargetDisplay">8 jam</span>
+            <button class="btn-sm btn-outline" id="btnEditSleepTarget">Edit</button>
+          </div>
+        </div>
+        <div id="sleepChart" class="sleep-chart-wrap"></div>
+        <div class="sleep-log-list" id="sleepLogList"></div>
+      </section>
+
+      <!-- WATER -->
+      <section class="page" id="page-water">
+        <div class="water-hero">
+          <div class="water-bottle-wrap">
+            <div class="water-bottle">
+              <div class="water-fill" id="waterFill"></div>
+              <div class="water-percent" id="waterPercent">0%</div>
+            </div>
+          </div>
+          <div class="water-info">
+            <p class="water-count" id="waterCount">0 <span>gelas</span></p>
+            <p class="water-target-text" id="waterTargetText">Target: 8 gelas</p>
+            <div class="water-actions">
+              <button class="btn btn-primary btn-lg" id="btnAddWaterMain">+ Tambah</button>
+              <button class="btn btn-outline" id="btnResetWater">Reset</button>
+            </div>
+          </div>
+        </div>
+        <div class="water-cups-grid" id="waterCupsGrid"></div>
+        <div class="water-settings card">
+          <div class="card-label">Pengaturan</div>
+          <div class="water-setting-row">
+            <label>Target harian (gelas)</label>
+            <input type="number" id="waterTargetInput" min="1" max="20" value="8" class="input-sm"/>
+          </div>
+        </div>
+        <div class="water-log" id="waterLog"></div>
+      </section>
+
+      <!-- GOALS -->
+      <section class="page" id="page-goals">
+        <div class="page-toolbar">
+          <h3 class="section-title">Goals</h3>
+          <button class="btn btn-primary" id="btnAddGoal">+ Goal</button>
+        </div>
+        <div class="goals-list" id="goalsList"></div>
+      </section>
+
+      <!-- STATS -->
+      <section class="page" id="page-stats">
+        <div class="stats-overview" id="statsOverview"></div>
+        <div class="stats-charts" id="statsCharts"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="page" id="page-settings">
+        <div class="settings-list">
+          <div class="settings-group">
+            <div class="settings-group-title">Profil</div>
+            <div class="settings-item">
+              <label>Nama</label>
+              <input type="text" id="settingName" class="input-field" value="Azhar" style="max-width:160px"/>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-group-title">Tampilan</div>
+            <div class="settings-item">
+              <label>Mode Gelap</label>
+              <label class="toggle"><input type="checkbox" id="darkModeToggle"/><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-group-title">Data</div>
+            <div class="settings-item">
+              <label>Export Data</label>
+              <button class="btn btn-outline" id="btnExport">Export JSON</button>
+            </div>
+            <div class="settings-item">
+              <label>Import Data</label>
+              <input type="file" id="importFile" accept=".json" style="display:none"/>
+              <button class="btn btn-outline" id="btnImport">Import JSON</button>
+            </div>
+            <div class="settings-item">
+              <label>Reset Semua Data</label>
+              <button class="btn btn-danger" id="btnReset">Reset</button>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-group-title">Tentang</div>
+            <div class="settings-item settings-info">
+              <p><strong>LifeHub</strong> v1.2</p>
+              <p>Personal life management app</p>
+              <p>Dibuat dengan ❤️ — 100% offline</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav" id="bottomNav">
+  <a href="#" class="bnav-item active" data-page="dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <small>Home</small></a>
+  <a href="#" class="bnav-item" data-page="todo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    <small>Todo</small></a>
+  <a href="#" class="bnav-item" data-page="habit">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    <small>Habit</small></a>
+  <a href="#" class="bnav-item" data-page="sholat">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+    <small>Sholat</small></a>
+  <a href="#" class="bnav-item" data-page="journal">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+    <small>Journal</small></a>
+</nav>
+
+<!-- Backdrop -->
+<div class="modal-backdrop" id="modalBackdrop"></div>
+
+<!-- Todo Modal -->
+<div class="modal" id="todoModal">
+  <div class="modal-header"><h3 id="todoModalTitle">Tambah Todo</h3><button class="modal-close" data-modal="todoModal">✕</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="todoEditId"/>
+    <div class="form-group"><label>Judul *</label><input type="text" id="todoTitle" class="input-field" placeholder="Judul todo..."/></div>
+    <div class="form-group"><label>Catatan</label><textarea id="todoNote" class="input-field" rows="3" placeholder="Catatan..."></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>Prioritas</label>
+        <select id="todoPriority" class="input-field"><option value="low">🟢 Low</option><option value="medium" selected>🟡 Medium</option><option value="high">🔴 High</option></select></div>
+      <div class="form-group"><label>Kategori</label><input type="text" id="todoCategory" class="input-field" placeholder="Kategori..."/></div>
+    </div>
+    <div class="form-group"><label>Deadline</label><input type="date" id="todoDeadline" class="input-field"/></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" data-modal="todoModal">Batal</button>
+    <button class="btn btn-primary" id="btnSaveTodo">Simpan</button>
+  </div>
+</div>
+
+<!-- Habit Modal -->
+<div class="modal" id="habitModal">
+  <div class="modal-header"><h3 id="habitModalTitle">Tambah Habit</h3><button class="modal-close" data-modal="habitModal">✕</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="habitEditId"/>
+    <div class="form-group"><label>Nama Habit *</label><input type="text" id="habitName" class="input-field" placeholder="Nama habit..."/></div>
+    <div class="form-group"><label>Ikon</label>
+      <div class="icon-picker" id="habitIconPicker">
+        <button class="icon-opt selected" data-icon="💧">💧</button>
+        <button class="icon-opt" data-icon="📚">📚</button>
+        <button class="icon-opt" data-icon="🏃">🏃</button>
+        <button class="icon-opt" data-icon="🧘">🧘</button>
+        <button class="icon-opt" data-icon="✍️">✍️</button>
+        <button class="icon-opt" data-icon="🎯">🎯</button>
+        <button class="icon-opt" data-icon="💪">💪</button>
+        <button class="icon-opt" data-icon="🎵">🎵</button>
+        <button class="icon-opt" data-icon="🍎">🍎</button>
+        <button class="icon-opt" data-icon="☀️">☀️</button>
+      </div>
+      <input type="hidden" id="habitIcon" value="💧"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Target/Minggu</label><input type="number" id="habitTarget" class="input-field" min="1" max="7" value="7"/></div>
+      <div class="form-group"><label>Warna</label><input type="color" id="habitColor" class="input-field color-input" value="#6C63FF"/></div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" data-modal="habitModal">Batal</button>
+    <button class="btn btn-primary" id="btnSaveHabit">Simpan</button>
+  </div>
+</div>
+
+<!-- Journal Modal -->
+<div class="modal modal-large" id="journalModal">
+  <div class="modal-header"><h3 id="journalModalTitle">Tulis Jurnal</h3><button class="modal-close" data-modal="journalModal">✕</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="journalEditId"/>
+    <div class="form-group"><label>Judul</label><input type="text" id="journalTitle" class="input-field" placeholder="Judul jurnal..."/></div>
+    <div class="form-group"><label>Mood</label>
+      <div class="mood-row">
+        <button class="mood-btn" data-mood="happy">😊</button>
+        <button class="mood-btn" data-mood="neutral">😐</button>
+        <button class="mood-btn" data-mood="sad">😔</button>
+        <button class="mood-btn" data-mood="excited">🤩</button>
+        <button class="mood-btn" data-mood="tired">😴</button>
+      </div>
+      <input type="hidden" id="journalMood" value=""/>
+    </div>
+    <div class="form-group"><label>Isi Jurnal *</label><textarea id="journalContent" class="input-field" rows="8" placeholder="Ceritakan harimu..."></textarea></div>
+    <div class="form-group"><label>Tag (pisah koma)</label><input type="text" id="journalTags" class="input-field" placeholder="keluarga, kerja, senang"/></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" data-modal="journalModal">Batal</button>
+    <button class="btn btn-primary" id="btnSaveJournal">Simpan</button>
+  </div>
+</div>
+
+<!-- Journal View -->
+<div class="modal modal-large" id="journalViewModal">
+  <div class="modal-header"><h3 id="journalViewTitle">Jurnal</h3><button class="modal-close" data-modal="journalViewModal">✕</button></div>
+  <div class="modal-body" id="journalViewBody"></div>
+  <div class="modal-footer">
+    <button class="btn btn-danger" id="btnDeleteJournal">Hapus</button>
+    <button class="btn btn-outline" id="btnEditJournalFromView">Edit</button>
+  </div>
+</div>
+
+<!-- Sleep Modal -->
+<div class="modal" id="sleepModal">
+  <div class="modal-header"><h3>Catat Tidur</h3><button class="modal-close" data-modal="sleepModal">✕</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="sleepEditId"/>
+    <div class="form-group"><label>Tanggal</label><input type="date" id="sleepDate" class="input-field"/></div>
+    <div class="form-row">
+      <div class="form-group"><label>Jam Tidur</label><input type="time" id="sleepStart" class="input-field" value="22:00"/></div>
+      <div class="form-group"><label>Jam Bangun</label><input type="time" id="sleepEnd" class="input-field" value="06:00"/></div>
+    </div>
+    <div class="form-group"><label>Kualitas Tidur</label>
+      <select id="sleepQuality" class="input-field">
+        <option value="5">⭐⭐⭐⭐⭐ Sangat Baik</option>
+        <option value="4">⭐⭐⭐⭐ Baik</option>
+        <option value="3" selected>⭐⭐⭐ Cukup</option>
+        <option value="2">⭐⭐ Kurang</option>
+        <option value="1">⭐ Buruk</option>
+      </select>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" data-modal="sleepModal">Batal</button>
+    <button class="btn btn-primary" id="btnSaveSleep">Simpan</button>
+  </div>
+</div>
+
+<!-- Goal Modal -->
+<div class="modal" id="goalModal">
+  <div class="modal-header"><h3 id="goalModalTitle">Tambah Goal</h3><button class="modal-close" data-modal="goalModal">✕</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="goalEditId"/>
+    <div class="form-group"><label>Judul Goal *</label><input type="text" id="goalTitle" class="input-field" placeholder="Apa goalmu?"/></div>
+    <div class="form-group"><label>Deskripsi</label><textarea id="goalDesc" class="input-field" rows="3" placeholder="Deskripsi..."></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>Progress (%)</label><input type="number" id="goalProgress" class="input-field" min="0" max="100" value="0"/></div>
+      <div class="form-group"><label>Deadline</label><input type="date" id="goalDeadline" class="input-field"/></div>
+    </div>
+    <div class="form-group"><label>Ikon</label>
+      <div class="icon-picker" id="goalIconPicker">
+        <button class="icon-opt selected" data-icon="🎯">🎯</button>
+        <button class="icon-opt" data-icon="💻">💻</button>
+        <button class="icon-opt" data-icon="📚">📚</button>
+        <button class="icon-opt" data-icon="💰">💰</button>
+        <button class="icon-opt" data-icon="✈️">✈️</button>
+        <button class="icon-opt" data-icon="🏋️">🏋️</button>
+        <button class="icon-opt" data-icon="🎓">🎓</button>
+        <button class="icon-opt" data-icon="❤️">❤️</button>
+        <button class="icon-opt" data-icon="🏠">🏠</button>
+        <button class="icon-opt" data-icon="🎨">🎨</button>
+      </div>
+      <input type="hidden" id="goalIcon" value="🎯"/>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" data-modal="goalModal">Batal</button>
+    <button class="btn btn-primary" id="btnSaveGoal">Simpan</button>
+  </div>
+</div>
+
+<!-- Milestone Modal -->
+<div class="modal" id="milestoneModal">
+  <div class="modal-header"><h3>Tambah Milestone</h3><button class="modal-close" data-modal="milestoneModal">✕</button></div>
+  <div class="modal-body">
+    <input type="hidden" id="milestoneGoalId"/>
+    <div class="form-group"><label>Milestone *</label><input type="text" id="milestoneName" class="input-field" placeholder="Nama milestone..."/></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" data-modal="milestoneModal">Batal</button>
+    <button class="btn btn-primary" id="btnSaveMilestone">Simpan</button>
+  </div>
+</div>
+
+<!-- Confirm -->
+<div class="modal" id="confirmModal">
+  <div class="modal-header"><h3>Konfirmasi</h3></div>
+  <div class="modal-body"><p id="confirmText">Apakah kamu yakin?</p></div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" id="confirmNo">Batal</button>
+    <button class="btn btn-danger" id="confirmYes">Ya, Lanjutkan</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
