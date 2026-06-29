@@ -109,7 +109,8 @@ const S = {
   settings: { name:'Azhar', darkMode:false, sleepTarget:8, waterTarget:8 },
   todos: [], habits: [], habitLogs: [], journals: [],
   sleepLogs: [], goals: [], milestones: [], waterLogs: [],
-  sholatLogs: []
+  sholatLogs: [],
+  sleepSession: null
 };
 
 // ===== QUOTES =====
@@ -228,8 +229,171 @@ async function scheduleNotifications() {
   scheduleAt(eveningTime, '🌙 Rekap Malam LifeHub', `Hai ${name}! Jangan lupa rekap aktivitas hari ini sebelum tidur 📋`);
 }
 
+// ===== SLEEP SESSION =====
+let _sleepElapsedTimer = null;
 
-function updateSkyBackground() {
+async function startSleepSession() {
+  const now2 = new Date();
+  const session = {
+    startTime: now2.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}),
+    startDate: now2.toISOString().slice(0,10),
+    timestamp: now2.getTime()
+  };
+  S.sleepSession = session;
+  await KV.set('sleep_active_session', session);
+  showToast('😴 Selamat tidur! Waktu tidur dicatat.');
+  renderSleepSessionCard();
+  renderDashboardSleepBtn();
+}
+
+async function cancelSleepSession() {
+  S.sleepSession = null;
+  await KV.set('sleep_active_session', null);
+  if (_sleepElapsedTimer) { clearInterval(_sleepElapsedTimer); _sleepElapsedTimer = null; }
+  showToast('Sesi tidur dibatalkan');
+  renderSleepSessionCard();
+  renderDashboardSleepBtn();
+}
+
+function openWakeModal() {
+  if (!S.sleepSession) return;
+  const now2 = new Date();
+  const elapsed = (now2.getTime() - S.sleepSession.timestamp) / 3600000;
+  const h = Math.floor(elapsed);
+  const m = Math.round((elapsed - h) * 60);
+  const durStr = h > 0 ? `${h} jam ${m > 0 ? m + ' menit' : ''}` : `${m} menit`;
+  const wdd = el('wakeDurationDisplay');
+  if (wdd) wdd.innerHTML = `
+    <div class="wake-dur-big">⏱ ${durStr}</div>
+    <div class="wake-dur-sub">Tidur: ${S.sleepSession.startTime} · ${fmtShort(S.sleepSession.startDate + 'T00:00:00')}</div>
+  `;
+  openModal('wakeModal');
+}
+
+async function endSleepSession(quality) {
+  if (!S.sleepSession) return;
+  closeModal('wakeModal');
+
+  const now2 = new Date();
+  const endTime = now2.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+  const endDate = now2.toISOString().slice(0,10);
+  const elapsed = (now2.getTime() - S.sleepSession.timestamp) / 3600000;
+  const duration = Math.max(0.1, Math.round(elapsed * 10) / 10);
+
+  await DB.put('sleepLogs', {
+    id: uid(),
+    date: endDate,
+    start: S.sleepSession.startTime,
+    end: endTime,
+    startDate: S.sleepSession.startDate,
+    duration,
+    quality
+  });
+
+  S.sleepSession = null;
+  await KV.set('sleep_active_session', null);
+  if (_sleepElapsedTimer) { clearInterval(_sleepElapsedTimer); _sleepElapsedTimer = null; }
+
+  showToast('☀️ Selamat pagi! Catatan tidur disimpan.');
+  renderSleepSessionCard();
+  renderDashboardSleepBtn();
+  if (S.currentPage === 'sleep') renderSleep();
+  if (S.currentPage === 'dashboard') renderDashboard();
+
+  // Sleep warning check
+  const target = S.settings.sleepTarget || 8;
+  if (duration < target) {
+    const lack = (target - duration).toFixed(1);
+    const warnBody = el('sleepWarnBody');
+    if (warnBody) {
+      warnBody.innerHTML = `
+        <div class="sleep-warn-stat">
+          <div class="sleep-warn-stat-item">
+            <div class="swsi-val" style="color:#FF6B6B">${duration.toFixed(1)}<span class="swsi-unit">jam</span></div>
+            <div class="swsi-lbl">Tidur kamu</div>
+          </div>
+          <div class="sleep-warn-vs">vs</div>
+          <div class="sleep-warn-stat-item">
+            <div class="swsi-val" style="color:#43E97B">${target}<span class="swsi-unit">jam</span></div>
+            <div class="swsi-lbl">Target</div>
+          </div>
+        </div>
+        <div class="sleep-warn-lack">Kurang <strong>${lack} jam</strong> dari target tidurmu!</div>
+        <div class="sleep-warn-effects">
+          <div class="sleep-warn-effect-title">Dampak kurang tidur:</div>
+          <div class="sleep-warn-effect">😵 Fokus & konsentrasi menurun drastis</div>
+          <div class="sleep-warn-effect">🧠 Fungsi memori & kognitif terganggu</div>
+          <div class="sleep-warn-effect">😤 Mudah emosi & rentan stres</div>
+          <div class="sleep-warn-effect">💪 Pemulihan otot tidak optimal</div>
+          <div class="sleep-warn-effect">🦠 Sistem imun melemah</div>
+        </div>
+        <div class="sleep-warn-tip">💡 <strong>Tips:</strong> Coba tidur lebih awal malam ini dan hindari layar 30 menit sebelum tidur.</div>
+      `;
+    }
+    setTimeout(() => openModal('sleepWarnModal'), 600);
+  }
+}
+
+function renderSleepSessionCard() {
+  const card = el('sleepSessionCard');
+  if (!card) return;
+  if (_sleepElapsedTimer) { clearInterval(_sleepElapsedTimer); _sleepElapsedTimer = null; }
+
+  if (S.sleepSession) {
+    const updateElapsed = () => {
+      const now2 = new Date();
+      const elapsed = (now2.getTime() - S.sleepSession.timestamp) / 3600000;
+      const h = Math.floor(elapsed); const m = Math.round((elapsed - h) * 60);
+      const durEl = card.querySelector('.sleep-sess-elapsed');
+      if (durEl) durEl.textContent = h > 0 ? `${h} jam ${m} menit` : `${m} menit`;
+    };
+    card.innerHTML = `
+      <div class="sleep-sess-active">
+        <div class="sleep-sess-pulse">💤</div>
+        <div class="sleep-sess-info">
+          <div class="sleep-sess-status">Sedang Tidur...</div>
+          <div class="sleep-sess-since">Mulai: <strong>${S.sleepSession.startTime}</strong> · ${fmtShort(S.sleepSession.startDate + 'T00:00:00')}</div>
+          <div class="sleep-sess-dur">⏱ <span class="sleep-sess-elapsed">menghitung...</span></div>
+        </div>
+      </div>
+      <div class="sleep-sess-actions">
+        <button class="btn btn-primary btn-wake-big" id="btnWakePage">☀️ Aku Sudah Bangun</button>
+        <button class="btn btn-outline btn-sm" id="btnCancelSleepPage">Batalkan Sesi</button>
+      </div>`;
+    qs('#btnWakePage', card).addEventListener('click', openWakeModal);
+    qs('#btnCancelSleepPage', card).addEventListener('click', () => confirm2('Batalkan sesi tidur ini?', cancelSleepSession));
+    updateElapsed();
+    _sleepElapsedTimer = setInterval(updateElapsed, 30000);
+  } else {
+    card.innerHTML = `
+      <div class="sleep-sess-idle">
+        <div class="sleep-sess-idle-icon">🌙</div>
+        <div class="sleep-sess-idle-text">Belum mulai tidur? Tekan tombol di bawah saat mau tidur.</div>
+        <button class="btn btn-primary btn-sleep-big" id="btnStartSleepPage">🌙 Mulai Tidur Sekarang</button>
+      </div>`;
+    qs('#btnStartSleepPage', card).addEventListener('click', startSleepSession);
+  }
+}
+
+function renderDashboardSleepBtn() {
+  const btn = el('dashSleepBtn');
+  if (!btn) return;
+  if (S.sleepSession) {
+    const now2 = new Date();
+    const elapsed = (now2.getTime() - S.sleepSession.timestamp) / 3600000;
+    const h = Math.floor(elapsed); const m = Math.round((elapsed - h) * 60);
+    const durStr = h > 0 ? `${h}j ${m}m` : `${m}m`;
+    btn.innerHTML = `☀️ Bangun <span class="dash-sleep-elapsed">${durStr}</span>`;
+    btn.className = 'btn btn-sm btn-wake-dash';
+    btn.onclick = openWakeModal;
+  } else {
+    btn.innerHTML = '🌙 Mulai Tidur';
+    btn.className = 'btn btn-sm btn-sleep-dash';
+    btn.onclick = startSleepSession;
+  }
+}
+
+
   const h = new Date().getHours();
   const dashHero = el('dashHero');
   if (!dashHero) return;
@@ -482,6 +646,7 @@ async function renderDashboard() {
   const lastSleep = sleepLogs.filter(s => s.date <= today()).sort((a,b) => b.date.localeCompare(a.date))[0];
   const dsh = el('dashSleepHours');
   if(dsh) dsh.textContent = lastSleep ? lastSleep.duration.toFixed(1) : '—';
+  renderDashboardSleepBtn();
 
   // Stats
   const doneTodos = todos.filter(t => t.done).length;
@@ -952,6 +1117,7 @@ function renderSholatWeek(sholatLogs) {
 async function renderSleep() {
   const target = S.settings.sleepTarget || 8;
   const tDisp = el('sleepTargetDisplay'); if(tDisp) tDisp.textContent = `${target} jam`;
+  renderSleepSessionCard();
   const logs = await DB.getAll('sleepLogs');
   const sorted = [...logs].sort((a,b) => b.date.localeCompare(a.date));
   renderSleepChart(sorted, target);
@@ -1442,6 +1608,11 @@ function setupEvents() {
     const newTarget = prompt('Target tidur (jam):', S.settings.sleepTarget||8);
     if(newTarget && !isNaN(newTarget)) { S.settings.sleepTarget = parseInt(newTarget); saveSettings(); renderSleep(); }
   });
+  // Wake quality buttons (inside wakeModal)
+  qsa('.wake-quality-btn').forEach(btn => {
+    btn.addEventListener('click', () => endSleepSession(parseInt(btn.dataset.quality)));
+  });
+  el('btnSleepWarnOk').addEventListener('click', () => closeModal('sleepWarnModal'));
   // WATER
   el('btnAddWaterMain').addEventListener('click', addWater);
   el('btnResetWater').addEventListener('click', async () => {
@@ -1519,6 +1690,9 @@ async function init() {
   try { await DB.init(); } catch(e) { console.error('DB init failed', e); }
   const savedSettings = await KV.get('lifehub_settings');
   if(savedSettings) S.settings = { ...S.settings, ...savedSettings };
+  // Restore active sleep session
+  const savedSleepSession = await KV.get('sleep_active_session', null);
+  if(savedSleepSession && savedSleepSession.timestamp) S.sleepSession = savedSleepSession;
   applySettings();
   setupEvents();
   updateSkyBackground();

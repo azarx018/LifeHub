@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <title>LifeHub</title>
-  <meta name="description" content="Personal Life Management App — v1.2"/>
+  <meta name="description" content="Personal Life Management App — v1.3"/>
   <meta name="theme-color" content="#6C63FF"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -136,8 +136,9 @@
             <div id="dashSholat" class="dash-sholat-list"></div>
           </div>
           <div class="dash-card sleep-quick-card">
-            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg> Tidur Semalam</div>
-            <div class="sleep-info-mini"><span id="dashSleepHours">—</span><small>jam tidur</small></div>
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg> Tidur</div>
+            <div class="sleep-info-mini"><span id="dashSleepHours">—</span><small>jam semalam</small></div>
+            <button class="btn btn-sm btn-sleep-dash" id="dashSleepBtn">🌙 Mulai Tidur</button>
           </div>
           <div class="dash-card quote-card">
             <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg> Quote Harian</div>
@@ -233,8 +234,9 @@
       <section class="page" id="page-sleep">
         <div class="page-toolbar">
           <h3 class="section-title">Sleep Tracker</h3>
-          <button class="btn btn-primary" id="btnAddSleep">+ Catat</button>
+          <button class="btn btn-outline btn-sm" id="btnAddSleep">✎ Manual</button>
         </div>
+        <div class="sleep-session-card" id="sleepSessionCard"></div>
         <div class="sleep-target-card card">
           <div class="card-label">Target Tidur</div>
           <div class="sleep-target-row">
@@ -347,7 +349,7 @@
           <div class="settings-group">
             <div class="settings-group-title">Tentang</div>
             <div class="settings-item settings-info">
-              <p><strong>LifeHub</strong> v1.2</p>
+              <p><strong>LifeHub</strong> v1.3</p>
               <p>Personal life management app</p>
               <p>Dibuat dengan ❤️ — 100% offline</p>
             </div>
@@ -491,6 +493,35 @@
   <div class="modal-footer">
     <button class="btn btn-outline" data-modal="sleepModal">Batal</button>
     <button class="btn btn-primary" id="btnSaveSleep">Simpan</button>
+  </div>
+</div>
+
+<!-- Wake Quality Modal -->
+<div class="modal" id="wakeModal">
+  <div class="modal-header"><h3>☀️ Selamat Bangun!</h3><button class="modal-close" data-modal="wakeModal">✕</button></div>
+  <div class="modal-body">
+    <div id="wakeDurationDisplay" class="wake-dur-display"></div>
+    <p class="wake-quality-prompt">Bagaimana kualitas tidurmu?</p>
+    <div class="wake-quality-row">
+      <button class="wake-quality-btn" data-quality="5">
+        <span class="wq-emoji">😴</span><span class="wq-label">Nyenyak</span>
+      </button>
+      <button class="wake-quality-btn" data-quality="3">
+        <span class="wq-emoji">😐</span><span class="wq-label">Cukup</span>
+      </button>
+      <button class="wake-quality-btn" data-quality="1">
+        <span class="wq-emoji">😩</span><span class="wq-label">Kurang</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Sleep Warning Modal -->
+<div class="modal" id="sleepWarnModal">
+  <div class="modal-header"><h3>⚠️ Perhatian Tidur</h3></div>
+  <div class="modal-body" id="sleepWarnBody"></div>
+  <div class="modal-footer">
+    <button class="btn btn-primary" id="btnSleepWarnOk">Oke, Mengerti!</button>
   </div>
 </div>
 
