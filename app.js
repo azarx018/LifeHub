@@ -394,6 +394,7 @@ function renderDashboardSleepBtn() {
 }
 
 
+function updateSkyBackground() {
   const h = new Date().getHours();
   const dashHero = el('dashHero');
   if (!dashHero) return;
