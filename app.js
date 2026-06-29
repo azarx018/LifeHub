@@ -1612,7 +1612,8 @@ function setupEvents() {
   qsa('.wake-quality-btn').forEach(btn => {
     btn.addEventListener('click', () => endSleepSession(parseInt(btn.dataset.quality)));
   });
-  el('btnSleepWarnOk').addEventListener('click', () => closeModal('sleepWarnModal'));
+  const _btnSleepWarnOk = el('btnSleepWarnOk');
+  if(_btnSleepWarnOk) _btnSleepWarnOk.addEventListener('click', () => closeModal('sleepWarnModal'));
   // WATER
   el('btnAddWaterMain').addEventListener('click', addWater);
   el('btnResetWater').addEventListener('click', async () => {
@@ -1650,27 +1651,32 @@ function setupEvents() {
   el('settingName').addEventListener('change', e => { S.settings.name = e.target.value.trim()||'Azhar'; saveSettings(); el('greetName').textContent = S.settings.name; });
 
   // NOTIFICATIONS
-  el('notifToggle').addEventListener('change', async e => {
+  const _notifToggle = el('notifToggle');
+  if(_notifToggle) _notifToggle.addEventListener('change', async e => {
     if(e.target.checked) {
       const granted = await requestNotificationPermission();
       if(!granted) { e.target.checked = false; return; }
     }
     await KV.set('notif_enabled', e.target.checked);
-    el('notifTimeSettings').style.display = e.target.checked ? 'block' : 'none';
+    const _nts = el('notifTimeSettings');
+    if(_nts) _nts.style.display = e.target.checked ? 'block' : 'none';
     if(e.target.checked) { await scheduleNotifications(); showToast('🔔 Notifikasi diaktifkan'); }
     else { _notifTimers.forEach(t => clearTimeout(t)); _notifTimers = []; showToast('🔕 Notifikasi dimatikan'); }
   });
-  el('notifMorning').addEventListener('change', async e => {
+  const _notifMorning = el('notifMorning');
+  if(_notifMorning) _notifMorning.addEventListener('change', async e => {
     await KV.set('notif_morning', e.target.value);
     await scheduleNotifications();
     showToast('⏰ Jadwal pagi diperbarui ke ' + e.target.value);
   });
-  el('notifEvening').addEventListener('change', async e => {
+  const _notifEvening = el('notifEvening');
+  if(_notifEvening) _notifEvening.addEventListener('change', async e => {
     await KV.set('notif_evening', e.target.value);
     await scheduleNotifications();
     showToast('🌙 Jadwal malam diperbarui ke ' + e.target.value);
   });
-  el('btnTestNotif').addEventListener('click', async () => {
+  const _btnTestNotif = el('btnTestNotif');
+  if(_btnTestNotif) _btnTestNotif.addEventListener('click', async () => {
     const granted = await requestNotificationPermission();
     if(!granted) return;
     await showPushNotif('🔔 Test LifeHub', `Hei ${S.settings.name}! Notifikasi berfungsi dengan baik ✅`);
@@ -1688,13 +1694,15 @@ function registerSW() {
 // ===== INIT =====
 async function init() {
   try { await DB.init(); } catch(e) { console.error('DB init failed', e); }
-  const savedSettings = await KV.get('lifehub_settings');
-  if(savedSettings) S.settings = { ...S.settings, ...savedSettings };
-  // Restore active sleep session
-  const savedSleepSession = await KV.get('sleep_active_session', null);
-  if(savedSleepSession && savedSleepSession.timestamp) S.sleepSession = savedSleepSession;
+  try {
+    const savedSettings = await KV.get('lifehub_settings');
+    if(savedSettings) S.settings = { ...S.settings, ...savedSettings };
+    // Restore active sleep session
+    const savedSleepSession = await KV.get('sleep_active_session', null);
+    if(savedSleepSession && savedSleepSession.timestamp) S.sleepSession = savedSleepSession;
+  } catch(e) { console.error('Settings load failed', e); }
   applySettings();
-  setupEvents();
+  try { setupEvents(); } catch(e) { console.error('setupEvents error:', e); }
   updateSkyBackground();
   setInterval(updateSkyBackground, 60000);
   setInterval(updateClock, 1000);
@@ -1706,7 +1714,6 @@ async function init() {
     navigateTo('dashboard');
   }, 1500);
   registerSW();
-  // Schedule notifications after SW is ready
   setTimeout(() => scheduleNotifications(), 3000);
 }
 document.addEventListener('DOMContentLoaded', init);
