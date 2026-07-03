@@ -106,6 +106,7 @@ const S = {
   sholatDate: today(),
   journalDate: today(),
   journalSearch: '',
+  activityRange: 7,
   settings: { name:'Azhar', darkMode:false, sleepTarget:8, waterTarget:8 },
   todos: [], habits: [], habitLogs: [], journals: [],
   sleepLogs: [], goals: [], milestones: [], waterLogs: [],
@@ -427,7 +428,8 @@ function updateSkyBackground() {
   if (!cel) {
     cel = document.createElement('div');
     cel.className = 'hero-celestial';
-    cel.style.cssText = 'position:absolute;right:16px;top:14px;width:46px;height:46px;border-radius:50%;z-index:2;transition:all 1s ease;pointer-events:none;';
+    // Position: top-right corner, above the clock text area
+    cel.style.cssText = 'position:absolute;right:14px;top:10px;width:42px;height:42px;border-radius:50%;z-index:2;transition:all 1s ease;pointer-events:none;';
     dashHero.appendChild(cel);
   }
   if (showStars) {
@@ -466,6 +468,7 @@ function generateStars(container) {
 }
 
 // ===== CLOCK =====
+let _lastDate = today();
 function updateClock() {
   const clockEl = el('liveClock'); if(!clockEl) return;
   const now2 = new Date();
@@ -473,6 +476,22 @@ function updateClock() {
   const m = now2.getMinutes().toString().padStart(2,'0');
   const s = now2.getSeconds().toString().padStart(2,'0');
   clockEl.textContent = `${h}:${m}:${s}`;
+
+  // Auto-refresh saat hari berganti (midnight fix)
+  const currentDate = now2.toISOString().slice(0,10);
+  if(currentDate !== _lastDate) {
+    _lastDate = currentDate;
+    // Reset date-scoped states ke hari baru
+    S.habitDate  = currentDate;
+    S.sholatDate = currentDate;
+    S.journalDate= currentDate;
+    updateSkyBackground();
+    if(S.currentPage === 'dashboard') renderDashboard();
+    else if(S.currentPage === 'habit')  renderHabits();
+    else if(S.currentPage === 'sholat') renderSholat();
+    else if(S.currentPage === 'journal') renderJournal();
+  }
+
   updateGreeting();
 }
 function updateGreeting() {
@@ -495,7 +514,7 @@ function navigateTo(page) {
   const pg = el('page-' + page); if(pg) pg.classList.add('active');
   qsa('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   qsa('.bnav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
-  const titles = { dashboard:'Dashboard', todo:'Todo', habit:'Habit Tracker', journal:'Journal', sholat:'Sholat', sleep:'Sleep Tracker', water:'Water Tracker', goals:'Goals', stats:'Statistik', settings:'Pengaturan' };
+  const titles = { dashboard:'Dashboard', todo:'Todo', habit:'Habit Tracker', journal:'Journal', sholat:'Sholat', sleep:'Sleep Tracker', water:'Water Tracker', goals:'Goals', stats:'Statistik', activity:'Log Aktivitas', settings:'Pengaturan' };
   const tb = el('topbarTitle'); if(tb) tb.textContent = titles[page] || page;
   S.currentPage = page;
   closeSidebar();
@@ -509,6 +528,7 @@ function navigateTo(page) {
     case 'water': renderWater(); break;
     case 'goals': renderGoals(); break;
     case 'stats': renderStats(); break;
+    case 'activity': renderActivity(); break;
     case 'settings': renderSettings(); break;
   }
 }
@@ -595,23 +615,41 @@ async function renderDashboard() {
     });
   }
 
-  // Todos
+  // Todos — prioritas High→Medium→Low, belum selesai duluan
   const todos = await DB.getAll('todos');
-  const todayTodos = todos.filter(t => !t.archived && t.deadline === today());
-  const pendingTodos = todos.filter(t => !t.done && !t.archived).slice(0,4);
-  const showTodos = todayTodos.length ? todayTodos : pendingTodos;
+  const pOrder = {high:0, medium:1, low:2};
+  const pendingTodos = todos
+    .filter(t => !t.done && !t.archived)
+    .sort((a,b) => (pOrder[a.priority]??1) - (pOrder[b.priority]??1));
+  const doneTodayTodos = todos
+    .filter(t => t.done && !t.archived && t.doneAt === today())
+    .sort((a,b) => (pOrder[a.priority]??1) - (pOrder[b.priority]??1));
+  // Tampilkan: pending dulu (sort priority), lalu yang done hari ini, max 5
+  const showTodos = [...pendingTodos, ...doneTodayTodos].slice(0,5);
   const dtEl = el('dashTodos');
   if(dtEl) {
     dtEl.innerHTML = '';
-    if(!showTodos.length) { dtEl.innerHTML = '<p style="font-size:0.8rem;color:var(--text3)">Tidak ada todo</p>'; }
-    showTodos.slice(0,4).forEach(t => {
-      const row = document.createElement('div');
-      row.className = 'dash-todo-row';
-      row.innerHTML = `<input type="checkbox" ${t.done?'checked':''} /><span style="${t.done?'text-decoration:line-through;color:var(--text3)':''}">${t.title}</span>`;
-      const cb = qs('input', row);
-      cb.addEventListener('change', async () => { t.done = cb.checked; t.doneAt = t.done ? today() : null; await DB.put('todos', t); renderDashboard(); });
-      dtEl.appendChild(row);
-    });
+    if(!showTodos.length) {
+      dtEl.innerHTML = '<p style="font-size:0.8rem;color:var(--text3)">Tidak ada todo aktif 🎉</p>';
+    } else {
+      const priorityDot = {high:'🔴',medium:'🟡',low:'🟢'};
+      showTodos.forEach(t => {
+        const row = document.createElement('div');
+        row.className = 'dash-todo-row';
+        row.innerHTML = `
+          <input type="checkbox" ${t.done?'checked':''}/>
+          <span style="font-size:.78rem;${t.done?'text-decoration:line-through;color:var(--text3)':''}">${priorityDot[t.priority]||'⚪'} ${t.title}</span>
+        `;
+        const cb = qs('input', row);
+        cb.addEventListener('change', async () => {
+          t.done = cb.checked;
+          t.doneAt = t.done ? today() : null;
+          await DB.put('todos', t);
+          renderDashboard();
+        });
+        dtEl.appendChild(row);
+      });
+    }
   }
 
   // Sholat
@@ -1683,6 +1721,10 @@ function setupEvents() {
     await showPushNotif('🔔 Test LifeHub', `Hei ${S.settings.name}! Notifikasi berfungsi dengan baik ✅`);
     showToast('Notifikasi test dikirim!');
   });
+
+  // ACTIVITY LOG
+  const _btnPDF = el('btnDownloadPDF');
+  if(_btnPDF) _btnPDF.addEventListener('click', generatePDF);
 }
 
 // ===== PWA SERVICE WORKER =====
@@ -1717,4 +1759,411 @@ async function init() {
   registerSW();
   setTimeout(() => scheduleNotifications(), 3000);
 }
+// ===== ACTIVITY LOG v2.0 =====
+function getDateRange(rangeVal) {
+  const end = today();
+  if(rangeVal === 'all') return { start: '2000-01-01', end };
+  const d = new Date(); d.setDate(d.getDate() - (parseInt(rangeVal)-1));
+  return { start: d.toISOString().slice(0,10), end };
+}
+function inRange(date, range) { return date >= range.start && date <= range.end; }
+function daysBetween(a, b) {
+  return Math.ceil((new Date(b+'T12:00:00') - new Date(a+'T12:00:00')) / 86400000) + 1;
+}
+
+async function renderActivity() {
+  const range = getDateRange(S.activityRange);
+  const totalDays = S.activityRange === 'all' ? null : parseInt(S.activityRange);
+
+  // Load all data
+  const [todos, habits, hLogs, journals, sleepLogs, waterLogs, sholatLogs, goals, milestones] = await Promise.all([
+    DB.getAll('todos'), DB.getAll('habits'), DB.getAll('habitLogs'),
+    DB.getAll('journals'), DB.getAll('sleepLogs'), DB.getAll('waterLogs'),
+    DB.getAll('sholatLogs'), DB.getAll('goals'), DB.getAll('milestones')
+  ]);
+
+  // Filter by range
+  const rTodos     = todos.filter(t => t.done && t.doneAt && inRange(t.doneAt, range));
+  const rHLogs     = hLogs.filter(l => inRange(l.date, range));
+  const rJournals  = journals.filter(j => inRange(j.date, range));
+  const rSleep     = sleepLogs.filter(s => inRange(s.date, range));
+  const rWater     = waterLogs.filter(w => inRange(w.date, range));
+  const rSholat    = sholatLogs.filter(s => inRange(s.date, range));
+
+  // Count active days (days with any activity)
+  const activeDates = new Set([
+    ...rTodos.map(t=>t.doneAt), ...rHLogs.map(l=>l.date),
+    ...rJournals.map(j=>j.date), ...rSleep.map(s=>s.date),
+    ...rSholat.map(s=>s.date)
+  ]);
+  const activeDays = activeDates.size;
+  const periodDays = totalDays || daysBetween(range.start, range.end);
+
+  // Sholat stats
+  const totalSholatPossible = periodDays * 5;
+  const totalSholatDone = rSholat.reduce((acc,s) => acc + Object.values(s.prayers||{}).filter(Boolean).length, 0);
+  const sholatPct = totalSholatPossible ? Math.round(totalSholatDone/totalSholatPossible*100) : 0;
+
+  // Habit stats per habit
+  const habitStats = habits.map(h => {
+    const doneLogs = rHLogs.filter(l => l.habitId === h.id);
+    const possible = periodDays;
+    const pct = possible ? Math.round(doneLogs.length/possible*100) : 0;
+    return { ...h, done: doneLogs.length, possible, pct };
+  }).sort((a,b) => b.done - a.done);
+
+  // Sleep stats
+  const avgSleep = rSleep.length ? (rSleep.reduce((a,b)=>a+b.duration,0)/rSleep.length).toFixed(1) : 0;
+  const goodSleep = rSleep.filter(s=>s.duration>=(S.settings.sleepTarget||8)).length;
+
+  // Water stats
+  const waterDays = {};
+  rWater.forEach(w => { waterDays[w.date] = (waterDays[w.date]||0)+1; });
+  const avgWater = Object.values(waterDays).length ? (Object.values(waterDays).reduce((a,b)=>a+b,0)/Object.values(waterDays).length).toFixed(1) : 0;
+  const waterTarget = S.settings.waterTarget||8;
+  const waterGoalDays = Object.values(waterDays).filter(c=>c>=waterTarget).length;
+
+  // Mood stats
+  const moodCounts = {happy:0,neutral:0,sad:0,excited:0,tired:0};
+  rJournals.forEach(j => { if(j.mood && moodCounts[j.mood]!==undefined) moodCounts[j.mood]++; });
+  const moodEmoji = {happy:'😊',neutral:'😐',sad:'😔',excited:'🤩',tired:'😴'};
+  const moodLabel = {happy:'Senang',neutral:'Biasa',sad:'Sedih',excited:'Semangat',tired:'Capek'};
+  const topMood = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0];
+
+  // Goals progress
+  const goalStats = goals.map(g => {
+    const gm = milestones.filter(m=>m.goalId===g.id);
+    const pct = gm.length ? Math.round(gm.filter(m=>m.done).length/gm.length*100) : (g.progress||0);
+    return {...g, pct, milestoneCount: gm.length, milestoneDone: gm.filter(m=>m.done).length};
+  });
+
+  // Render
+  const container = el('activityContent'); if(!container) return;
+  const rangeLabel = S.activityRange==='all' ? 'Semua Waktu' : `${S.activityRange} Hari Terakhir`;
+  const dateLabel  = S.activityRange==='all' ? 'sejak awal' : `${fmt(range.start+'T12:00:00')} — ${fmt(range.end+'T12:00:00')}`;
+
+  container.innerHTML = `
+    <div class="activity-date-range">
+      📅 <strong>${rangeLabel}</strong> · ${dateLabel} · ${activeDays} hari aktif dari ${periodDays} hari
+    </div>
+
+    <!-- Ringkasan Umum -->
+    <div class="activity-summary-box">
+      <div class="activity-summary-title">✨ Ringkasan Aktivitas</div>
+      <div class="activity-summary-text">
+        Selama ${periodDays} hari ke belakang, kamu aktif di <strong>${activeDays} hari</strong>.
+        Berhasil menyelesaikan <strong>${rTodos.length} todo</strong>,
+        melakukan sholat <strong>${totalSholatDone} kali</strong> dari ${totalSholatPossible} waktu (${sholatPct}%),
+        dan menulis <strong>${rJournals.length} jurnal</strong>.
+        ${topMood&&topMood[1]>0 ? `Mood terbanyak kamu adalah <strong>${moodLabel[topMood[0]]} ${moodEmoji[topMood[0]]}</strong>.` : ''}
+      </div>
+    </div>
+
+    <!-- Todo -->
+    <div class="activity-section">
+      <div class="activity-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Todo
+      </div>
+      <div class="activity-stat-grid">
+        <div class="activity-stat-box"><div class="activity-stat-val">${rTodos.length}</div><div class="activity-stat-lbl">Tugas Selesai</div></div>
+        <div class="activity-stat-box"><div class="activity-stat-val">${todos.filter(t=>!t.done&&!t.archived).length}</div><div class="activity-stat-lbl">Masih Pending</div></div>
+        <div class="activity-stat-box"><div class="activity-stat-val">${todos.filter(t=>t.priority==='high'&&t.done&&t.doneAt&&inRange(t.doneAt,range)).length}</div><div class="activity-stat-lbl">High Priority Done</div></div>
+        <div class="activity-stat-box"><div class="activity-stat-val">${todos.filter(t=>t.archived).length}</div><div class="activity-stat-lbl">Diarsipkan</div></div>
+      </div>
+      ${rTodos.slice(0,5).map(t=>`<div class="activity-list-item"><div class="activity-list-dot" style="background:${{high:'#FF6B6B',medium:'#F9CA24',low:'#43E97B'}[t.priority]||'#999'}"></div><span>${escHtml(t.title)} <span style="color:var(--text3);font-size:.72rem">(${fmtShort(t.doneAt+'T12:00:00')})</span></span></div>`).join('')}
+      ${rTodos.length>5?`<p style="font-size:.75rem;color:var(--text3);margin-top:6px">...dan ${rTodos.length-5} lainnya</p>`:''}
+    </div>
+
+    <!-- Sholat -->
+    <div class="activity-section">
+      <div class="activity-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        Sholat
+      </div>
+      <div class="activity-stat-grid">
+        <div class="activity-stat-box"><div class="activity-stat-val">${totalSholatDone}</div><div class="activity-stat-lbl">Total Waktu Sholat</div></div>
+        <div class="activity-stat-box"><div class="activity-stat-val">${sholatPct}%</div><div class="activity-stat-lbl">Kepatuhan</div></div>
+      </div>
+      ${['subuh','dzuhur','ashar','maghrib','isya'].map(p => {
+        const doneCnt = rSholat.filter(s=>s.prayers&&s.prayers[p]).length;
+        const pct2 = periodDays ? Math.round(doneCnt/periodDays*100) : 0;
+        const pName = {subuh:'Subuh',dzuhur:'Dzuhur',ashar:'Ashar',maghrib:'Maghrib',isya:'Isya'}[p];
+        return `<div class="activity-progress-row">
+          <span class="activity-progress-label">${pName}</span>
+          <div class="activity-progress-bar"><div class="activity-progress-fill" style="width:${pct2}%;background:#6C63FF"></div></div>
+          <span class="activity-progress-pct">${doneCnt}/${periodDays}</span>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- Habit -->
+    <div class="activity-section">
+      <div class="activity-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Habit Tracker
+      </div>
+      ${habitStats.length === 0 ? '<p class="activity-empty">Belum ada habit</p>' :
+        habitStats.map(h => `<div class="activity-progress-row">
+          <span class="activity-progress-label" style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.icon||'🔥'} ${escHtml(h.name)}</span>
+          <div class="activity-progress-bar"><div class="activity-progress-fill" style="width:${h.pct}%;background:${h.color||'#6C63FF'}"></div></div>
+          <span class="activity-progress-pct">${h.done}/${periodDays} (${h.pct}%)</span>
+        </div>`).join('')
+      }
+    </div>
+
+    <!-- Tidur -->
+    <div class="activity-section">
+      <div class="activity-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        Tidur
+      </div>
+      <div class="activity-stat-grid">
+        <div class="activity-stat-box"><div class="activity-stat-val">${avgSleep}</div><div class="activity-stat-lbl">Rata-rata (jam)</div></div>
+        <div class="activity-stat-box"><div class="activity-stat-val">${rSleep.length}</div><div class="activity-stat-lbl">Hari Dicatat</div></div>
+        <div class="activity-stat-box"><div class="activity-stat-val">${goodSleep}</div><div class="activity-stat-lbl">Tidur Cukup (≥${S.settings.sleepTarget||8}j)</div></div>
+        <div class="activity-stat-box"><div class="activity-stat-val">${rSleep.length?Math.round(goodSleep/rSleep.length*100):0}%</div><div class="activity-stat-lbl">Konsistensi</div></div>
+      </div>
+    </div>
+
+    <!-- Air Minum -->
+    <div class="activity-section">
+      <div class="activity-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>
+        Air Minum
+      </div>
+      <div class="activity-stat-grid">
+        <div class="activity-stat-box"><div class="activity-stat-val">${avgWater}</div><div class="activity-stat-lbl">Rata-rata Gelas/Hari</div></div>
+        <div class="activity-stat-box"><div class="activity-stat-val">${rWater.length}</div><div class="activity-stat-lbl">Total Gelas Diminum</div></div>
+        <div class="activity-stat-box"><div class="activity-stat-val">${waterGoalDays}</div><div class="activity-stat-lbl">Hari Capai Target</div></div>
+        <div class="activity-stat-box"><div class="activity-stat-val">${Object.values(waterDays).length?Math.round(waterGoalDays/Object.values(waterDays).length*100):0}%</div><div class="activity-stat-lbl">Konsistensi</div></div>
+      </div>
+    </div>
+
+    <!-- Jurnal & Mood -->
+    <div class="activity-section">
+      <div class="activity-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        Jurnal & Mood
+      </div>
+      <div class="activity-stat-grid">
+        <div class="activity-stat-box"><div class="activity-stat-val">${rJournals.length}</div><div class="activity-stat-lbl">Jurnal Ditulis</div></div>
+        <div class="activity-stat-box"><div class="activity-stat-val">${periodDays?Math.round(rJournals.length/periodDays*100):0}%</div><div class="activity-stat-lbl">Konsistensi Nulis</div></div>
+      </div>
+      <div class="activity-mood-row">
+        ${Object.entries(moodCounts).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1]).map(([m,c])=>`
+          <div class="activity-mood-chip">${moodEmoji[m]} ${moodLabel[m]} <strong style="margin-left:3px">${c}x</strong></div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Goals -->
+    <div class="activity-section">
+      <div class="activity-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        Goals
+      </div>
+      ${goalStats.length === 0 ? '<p class="activity-empty">Belum ada goals</p>' :
+        goalStats.map(g => `<div class="activity-progress-row">
+          <span class="activity-progress-label" style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.icon||'🎯'} ${escHtml(g.title)}</span>
+          <div class="activity-progress-bar"><div class="activity-progress-fill" style="width:${g.pct}%;background:#6C63FF"></div></div>
+          <span class="activity-progress-pct">${g.pct}%</span>
+        </div>`).join('')
+      }
+    </div>
+  `;
+
+  // Setup range filter buttons
+  qsa('.activity-filter-row .filter-btn').forEach(b => {
+    b.classList.toggle('active', String(b.dataset.range) === String(S.activityRange));
+    b.onclick = () => { S.activityRange = b.dataset.range === 'all' ? 'all' : parseInt(b.dataset.range); renderActivity(); };
+  });
+}
+
+// ===== PDF GENERATOR =====
+async function generatePDF() {
+  const range    = getDateRange(S.activityRange);
+  const rangeLabel = S.activityRange==='all' ? 'Semua Waktu' : `${S.activityRange} Hari Terakhir`;
+  const name     = S.settings.name || 'Azhar';
+  const periodDays = S.activityRange==='all' ? daysBetween(range.start, range.end) : parseInt(S.activityRange);
+
+  const [todos, habits, hLogs, journals, sleepLogs, waterLogs, sholatLogs, goals, milestones] = await Promise.all([
+    DB.getAll('todos'), DB.getAll('habits'), DB.getAll('habitLogs'),
+    DB.getAll('journals'), DB.getAll('sleepLogs'), DB.getAll('waterLogs'),
+    DB.getAll('sholatLogs'), DB.getAll('goals'), DB.getAll('milestones')
+  ]);
+
+  const rTodos   = todos.filter(t => t.done && t.doneAt && inRange(t.doneAt, range));
+  const rHLogs   = hLogs.filter(l => inRange(l.date, range));
+  const rJournals= journals.filter(j => inRange(j.date, range));
+  const rSleep   = sleepLogs.filter(s => inRange(s.date, range));
+  const rWater   = waterLogs.filter(w => inRange(w.date, range));
+  const rSholat  = sholatLogs.filter(s => inRange(s.date, range));
+
+  const totalSholatDone = rSholat.reduce((acc,s)=>acc+Object.values(s.prayers||{}).filter(Boolean).length,0);
+  const totalSholatPossible = periodDays*5;
+  const sholatPct = totalSholatPossible ? Math.round(totalSholatDone/totalSholatPossible*100) : 0;
+  const avgSleep = rSleep.length ? (rSleep.reduce((a,b)=>a+b.duration,0)/rSleep.length).toFixed(1) : 0;
+  const waterDays = {};
+  rWater.forEach(w=>{ waterDays[w.date]=(waterDays[w.date]||0)+1; });
+  const avgWater = Object.values(waterDays).length ? (Object.values(waterDays).reduce((a,b)=>a+b,0)/Object.values(waterDays).length).toFixed(1) : 0;
+  const moodCounts = {happy:0,neutral:0,sad:0,excited:0,tired:0};
+  rJournals.forEach(j=>{if(j.mood&&moodCounts[j.mood]!==undefined)moodCounts[j.mood]++;});
+  const moodEmoji = {happy:'😊',neutral:'😐',sad:'😔',excited:'🤩',tired:'😴'};
+  const moodLabel = {happy:'Senang',neutral:'Biasa',sad:'Sedih',excited:'Semangat',tired:'Capek'};
+  const topMood  = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0];
+  const habitStats = habits.map(h=>{
+    const d=rHLogs.filter(l=>l.habitId===h.id).length;
+    const pct=periodDays?Math.round(d/periodDays*100):0;
+    return{...h,done:d,pct};
+  }).sort((a,b)=>b.pct-a.pct);
+  const goalStats = goals.map(g=>{
+    const gm=milestones.filter(m=>m.goalId===g.id);
+    const pct=gm.length?Math.round(gm.filter(m=>m.done).length/gm.length*100):(g.progress||0);
+    return{...g,pct};
+  });
+
+  const progressBar = (pct,color='#6C63FF') =>
+    `<div style="background:#eee;border-radius:4px;height:8px;overflow:hidden;margin:4px 0">
+      <div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div>
+    </div>`;
+
+  const prayerNames = {subuh:'Subuh',dzuhur:'Dzuhur',ashar:'Ashar',maghrib:'Maghrib',isya:'Isya'};
+  const sholatRows = Object.entries(prayerNames).map(([k,n])=>{
+    const cnt = rSholat.filter(s=>s.prayers&&s.prayers[k]).length;
+    const pct2= periodDays?Math.round(cnt/periodDays*100):0;
+    return `<tr><td>${n}</td><td>${cnt}/${periodDays} hari</td><td>${pct2}%</td><td>${progressBar(pct2,'#6C63FF')}</td></tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<title>LifeHub — Log Aktivitas ${rangeLabel}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;padding:0}
+  .page{padding:36px 40px;max-width:800px;margin:0 auto}
+  h1{font-size:24px;color:#6C63FF;margin-bottom:4px}
+  .subtitle{color:#888;font-size:12px;margin-bottom:28px}
+  .section{margin-bottom:24px;page-break-inside:avoid}
+  .section-title{font-size:15px;font-weight:bold;color:#6C63FF;border-bottom:2px solid #6C63FF;padding-bottom:5px;margin-bottom:12px}
+  .summary-box{background:#f0eeff;border-radius:8px;padding:14px 16px;margin-bottom:22px;line-height:1.7;font-size:13px}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  .stat-box{background:#f5f6ff;border-radius:8px;padding:10px 12px;text-align:center}
+  .stat-val{font-size:22px;font-weight:bold;color:#6C63FF}
+  .stat-lbl{font-size:10px;color:#888;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  td,th{padding:7px 10px;text-align:left;border-bottom:1px solid #eee}
+  th{background:#f5f6ff;font-weight:bold;color:#333}
+  .bar{background:#eee;border-radius:4px;height:8px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px;background:#6C63FF}
+  .mood-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .mood-chip{background:#f5f6ff;border-radius:20px;padding:4px 12px;font-size:12px}
+  .footer{text-align:center;color:#aaa;font-size:11px;margin-top:32px;padding-top:12px;border-top:1px solid #eee}
+  @media print{body{padding:0}.page{padding:24px}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>📊 LifeHub — Log Aktivitas</h1>
+  <div class="subtitle">
+    Nama: <strong>${escHtml(name)}</strong> &nbsp;|&nbsp;
+    Periode: <strong>${rangeLabel}</strong> (${fmt(range.start+'T12:00:00')} — ${fmt(range.end+'T12:00:00')}) &nbsp;|&nbsp;
+    Dicetak: ${fmt(today()+'T12:00:00')}
+  </div>
+
+  <div class="summary-box">
+    Selama <strong>${periodDays} hari</strong>, kamu berhasil menyelesaikan <strong>${rTodos.length} tugas</strong>,
+    melaksanakan sholat <strong>${totalSholatDone} waktu</strong> dari ${totalSholatPossible} waktu yang ada (<strong>${sholatPct}%</strong>),
+    dan menulis jurnal sebanyak <strong>${rJournals.length} kali</strong>.
+    Rata-rata tidur <strong>${avgSleep} jam/malam</strong> dan minum <strong>${avgWater} gelas/hari</strong>.
+    ${topMood&&topMood[1]>0?`Mood terbanyak: <strong>${moodLabel[topMood[0]]} ${moodEmoji[topMood[0]]}</strong>.`:''}
+  </div>
+
+  <div class="section">
+    <div class="section-title">✅ Todo</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">${rTodos.length}</div><div class="stat-lbl">Tugas Selesai</div></div>
+      <div class="stat-box"><div class="stat-val">${rTodos.filter(t=>t.priority==='high').length}</div><div class="stat-lbl">High Priority</div></div>
+      <div class="stat-box"><div class="stat-val">${rTodos.filter(t=>t.priority==='medium').length}</div><div class="stat-lbl">Medium Priority</div></div>
+      <div class="stat-box"><div class="stat-val">${rTodos.filter(t=>t.priority==='low').length}</div><div class="stat-lbl">Low Priority</div></div>
+    </div>
+    ${rTodos.length>0?`<table><tr><th>Tugas</th><th>Prioritas</th><th>Selesai</th><th>Kategori</th></tr>
+      ${rTodos.map(t=>`<tr><td>${escHtml(t.title)}</td><td>${{high:'🔴 High',medium:'🟡 Medium',low:'🟢 Low'}[t.priority]||'-'}</td><td>${fmtShort((t.doneAt||today())+'T12:00:00')}</td><td>${escHtml(t.category||'-')}</td></tr>`).join('')}
+    </table>`:'<p style="color:#aaa;font-size:12px">Belum ada todo selesai di periode ini.</p>'}
+  </div>
+
+  <div class="section">
+    <div class="section-title">🕌 Sholat</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">${totalSholatDone}</div><div class="stat-lbl">Total Waktu Sholat</div></div>
+      <div class="stat-box"><div class="stat-val">${sholatPct}%</div><div class="stat-lbl">Kepatuhan</div></div>
+      <div class="stat-box"><div class="stat-val">${totalSholatPossible}</div><div class="stat-lbl">Total Waktu (Target)</div></div>
+      <div class="stat-box"><div class="stat-val">${rSholat.filter(s=>Object.values(s.prayers||{}).filter(Boolean).length===5).length}</div><div class="stat-lbl">Hari Sempurna</div></div>
+    </div>
+    <table><tr><th>Waktu Sholat</th><th>Dilakukan</th><th>Persentase</th><th>Progress</th></tr>${sholatRows}</table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🔥 Habit Tracker</div>
+    ${habitStats.length===0?'<p style="color:#aaa;font-size:12px">Belum ada habit.</p>':
+    `<table><tr><th>Habit</th><th>Dilakukan</th><th>Dari (Hari)</th><th>Persentase</th><th>Progress</th></tr>
+      ${habitStats.map(h=>`<tr><td>${h.icon||'🔥'} ${escHtml(h.name)}</td><td>${h.done} kali</td><td>${periodDays} hari</td><td>${h.pct}%</td><td>${progressBar(h.pct,h.color||'#6C63FF')}</td></tr>`).join('')}
+    </table>`}
+  </div>
+
+  <div class="section">
+    <div class="section-title">💤 Tidur</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">${avgSleep}</div><div class="stat-lbl">Rata-rata (jam)</div></div>
+      <div class="stat-box"><div class="stat-val">${rSleep.length}</div><div class="stat-lbl">Hari Dicatat</div></div>
+      <div class="stat-box"><div class="stat-val">${rSleep.filter(s=>s.duration>=(S.settings.sleepTarget||8)).length}</div><div class="stat-lbl">Tidur Cukup</div></div>
+      <div class="stat-box"><div class="stat-val">${S.settings.sleepTarget||8}j</div><div class="stat-lbl">Target</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">💧 Air Minum</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">${avgWater}</div><div class="stat-lbl">Rata-rata Gelas/Hari</div></div>
+      <div class="stat-box"><div class="stat-val">${rWater.length}</div><div class="stat-lbl">Total Gelas</div></div>
+      <div class="stat-box"><div class="stat-val">${Object.values(waterDays).filter(c=>c>=parseInt(S.settings.waterTarget||8)).length}</div><div class="stat-lbl">Hari Capai Target</div></div>
+      <div class="stat-box"><div class="stat-val">${S.settings.waterTarget||8}</div><div class="stat-lbl">Target/Hari</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📓 Jurnal & Mood</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">${rJournals.length}</div><div class="stat-lbl">Jurnal Ditulis</div></div>
+      <div class="stat-box"><div class="stat-val">${periodDays?Math.round(rJournals.length/periodDays*100):0}%</div><div class="stat-lbl">Konsistensi</div></div>
+      ${topMood&&topMood[1]>0?`<div class="stat-box"><div class="stat-val">${moodEmoji[topMood[0]]}</div><div class="stat-lbl">Mood Terbanyak</div></div>`:''}
+    </div>
+    <div class="mood-chips">
+      ${Object.entries(moodCounts).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1]).map(([m,c])=>`<div class="mood-chip">${moodEmoji[m]} ${moodLabel[m]}: <strong>${c}x</strong></div>`).join('')}
+    </div>
+  </div>
+
+  ${goalStats.length>0?`<div class="section">
+    <div class="section-title">📚 Goals</div>
+    <table><tr><th>Goal</th><th>Progress</th><th>Milestone</th><th>Deadline</th></tr>
+      ${goalStats.map(g=>`<tr><td>${g.icon||'🎯'} ${escHtml(g.title)}</td><td>${g.pct}%</td><td>${g.milestoneDone||0}/${g.milestoneCount||0}</td><td>${g.deadline?fmtShort(g.deadline+'T12:00:00'):'-'}</td></tr>`).join('')}
+    </table>
+  </div>`:''}
+
+  <div class="footer">Digenerate oleh LifeHub v2.0 · ${new Date().toLocaleString('id-ID')}</div>
+</div>
+</body>
+</html>`;
+
+  // Open print dialog
+  const win = window.open('', '_blank');
+  if(!win) { showToast('Aktifkan popup di browser untuk download PDF'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => { win.focus(); win.print(); };
+  showToast('PDF siap! Pilih "Save as PDF" saat print 📄');
+}
+
 document.addEventListener('DOMContentLoaded', init);
