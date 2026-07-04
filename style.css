@@ -799,3 +799,59 @@ textarea.input-field{resize:vertical;min-height:90px}
 .activity-mood-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .activity-mood-chip{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:var(--bg3);font-size:.78rem}
 .activity-empty{text-align:center;padding:30px;color:var(--text3);font-size:.88rem}
+
+/* ===== STREAK KALENDER GITHUB-STYLE ===== */
+.habit-streak-wrap{margin-top:18px;padding:14px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.habit-streak-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.habit-streak-legend{display:flex;align-items:center;gap:3px}
+.streak-legend-label{font-size:.65rem;color:var(--text3);margin:0 3px}
+.streak-legend-box{width:11px;height:11px;border-radius:2px;flex-shrink:0}
+.habit-streak-months{display:flex;gap:0;margin-bottom:3px;padding-left:26px}
+.streak-month-label{font-size:.65rem;color:var(--text3);text-align:left;min-width:0}
+.habit-streak-grid-wrap{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px}
+.habit-streak-days-label{display:flex;flex-direction:column;gap:1.5px;flex-shrink:0;padding-top:1px}
+.habit-streak-days-label span{height:11px;font-size:.6rem;color:var(--text3);line-height:11px;text-align:right;width:22px}
+.habit-streak-grid{display:flex;gap:2px;align-items:flex-start}
+.streak-week-col{display:flex;flex-direction:column;gap:2px}
+.streak-cell{
+  width:11px;height:11px;border-radius:2px;
+  cursor:pointer;transition:transform .15s ease;
+  flex-shrink:0;
+}
+.streak-cell:hover{transform:scale(1.4);z-index:10;position:relative}
+.streak-cell.level-0{background:var(--bg3)}
+.streak-cell.level-1{background:#c4b5fd}
+.streak-cell.level-2{background:#8b5cf6}
+.streak-cell.level-3{background:#6C63FF}
+.streak-cell.level-4{background:#4c1d95}
+.streak-cell.today{outline:1.5px solid var(--primary);outline-offset:1px}
+.streak-cell.future{background:transparent;cursor:default}
+.habit-streak-tooltip{
+  display:none;position:fixed;
+  background:var(--text);color:var(--bg);
+  font-size:.72rem;padding:5px 10px;border-radius:8px;
+  pointer-events:none;z-index:200;white-space:nowrap;
+  box-shadow:0 3px 12px rgba(0,0,0,.2);
+}
+.habit-streak-tooltip.visible{display:block}
+.habit-streak-summary{font-size:.76rem;color:var(--text3);margin-top:8px;text-align:center}
+
+/* ===== PRAYER COUNTDOWN CARD ===== */
+.prayer-countdown-card{grid-column:span 2}
+.prayer-location-prompt{text-align:center;padding:4px 0}
+.prayer-next-wrap{display:flex;align-items:center;gap:12px}
+.prayer-next-icon{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-light));display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.prayer-next-icon svg{width:20px;height:20px;stroke:white}
+.prayer-next-info{flex:1}
+.prayer-next-name{font-weight:700;font-size:.95rem;margin-bottom:2px}
+.prayer-next-time{font-size:.78rem;color:var(--text3)}
+.prayer-countdown-timer{font-family:'Poppins',sans-serif;font-size:1.3rem;font-weight:700;color:var(--primary);text-align:right;flex-shrink:0}
+.prayer-countdown-timer.urgent{color:var(--danger);animation:pulse .8s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.prayer-times-row{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:10px}
+.prayer-time-item{text-align:center;padding:5px 2px;border-radius:8px;background:var(--bg3);transition:all .2s}
+.prayer-time-item.active-prayer{background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3)}
+.prayer-time-item.done-prayer{background:rgba(67,233,123,.1);border:1px solid rgba(67,233,123,.3)}
+.prayer-time-name{font-size:.62rem;font-weight:700;color:var(--text3)}
+.prayer-time-val{font-size:.72rem;font-weight:600;color:var(--text);margin-top:2px}
+.prayer-time-check{font-size:.65rem;margin-top:1px;color:var(--accent)}

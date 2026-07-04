@@ -182,6 +182,239 @@ function buildDonutSVG(segments) {
   return { svg: `<svg viewBox="0 0 ${SIZE} ${SIZE}" width="${SIZE}" height="${SIZE}"><g>${arcs}</g><text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="19" font-weight="700" fill="var(--text)">${pct}%</text><text x="${cx}" y="${cy + 13}" text-anchor="middle" font-size="8" fill="var(--text3)">selesai hari ini</text></svg>`, pct };
 }
 
+// ===== PRAYER TIME CALCULATOR =====
+// Rumus: Calculation Method = MWL (Muslim World League)
+// Fajr angle: 18°, Isha angle: 17°
+const PT = {
+  toRad: d => d * Math.PI / 180,
+  toDeg: r => r * 180 / Math.PI,
+  fixAngle: a => { a = a % 360; return a < 0 ? a + 360 : a; },
+  fixHour: h => { h = h % 24; return h < 0 ? h + 24 : h; },
+
+  sunPosition(jd) {
+    const D = jd - 2451545.0;
+    const g = this.fixAngle(357.529 + 0.98560028 * D);
+    const q = this.fixAngle(280.459 + 0.98564736 * D);
+    const L = this.fixAngle(q + 1.915 * Math.sin(this.toRad(g)) + 0.020 * Math.sin(this.toRad(2*g)));
+    const e = 23.439 - 0.00000036 * D;
+    const RA = this.toDeg(Math.atan2(Math.cos(this.toRad(e)) * Math.sin(this.toRad(L)), Math.cos(this.toRad(L)))) / 15;
+    const eqt = q/15 - this.fixHour(RA);
+    const decl = this.toDeg(Math.asin(Math.sin(this.toRad(e)) * Math.sin(this.toRad(L))));
+    return { decl, eqt };
+  },
+
+  julianDate(y, m, d) {
+    if(m <= 2) { y--; m += 12; }
+    const A = Math.floor(y/100);
+    const B = 2 - A + Math.floor(A/4);
+    return Math.floor(365.25*(y+4716)) + Math.floor(30.6001*(m+1)) + d + B - 1524.5;
+  },
+
+  midDay(t, jd) {
+    const { eqt } = this.sunPosition(jd + t);
+    return this.fixHour(12 - eqt);
+  },
+
+  sunAngleTime(angle, t, jd, lat, direction) {
+    const { decl } = this.sunPosition(jd + t);
+    const cosVal = (-Math.sin(this.toRad(angle)) - Math.sin(this.toRad(decl)) * Math.sin(this.toRad(lat))) /
+                   (Math.cos(this.toRad(decl)) * Math.cos(this.toRad(lat)));
+    if(Math.abs(cosVal) > 1) return NaN;
+    const T = this.toDeg(Math.acos(cosVal)) / 15;
+    return this.midDay(t, jd) + (direction === 'ccw' ? -T : T);
+  },
+
+  asrTime(factor, t, jd, lat) {
+    const { decl } = this.sunPosition(jd + t);
+    const angle = -this.toDeg(Math.atan(1 / (factor + Math.tan(this.toRad(Math.abs(lat - decl))))));
+    return this.sunAngleTime(angle, t, jd, lat, 'cw');
+  },
+
+  calculate(lat, lng, date) {
+    const jd = this.julianDate(date.getFullYear(), date.getMonth()+1, date.getDate());
+    const tz = date.getTimezoneOffset() / -60;
+    const times = {
+      subuh:   this.sunAngleTime(18, 5/24, jd, lat, 'ccw'),
+      terbit:  this.sunAngleTime(0.833, 6/24, jd, lat, 'ccw'),
+      dzuhur:  this.midDay(12/24, jd),
+      ashar:   this.asrTime(1, 13/24, jd, lat),
+      maghrib: this.sunAngleTime(0.833, 18/24, jd, lat, 'cw'),
+      isya:    this.sunAngleTime(17, 18/24, jd, lat, 'cw'),
+    };
+    // Convert to local time
+    const result = {};
+    Object.entries(times).forEach(([k, v]) => {
+      const localH = this.fixHour(v + tz - lng/15);
+      const h = Math.floor(localH);
+      const m = Math.floor((localH - h) * 60);
+      result[k] = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    });
+    return result;
+  },
+
+  toMinutes(timeStr) {
+    const [h,m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+  }
+};
+
+// State prayer times
+let _prayerTimes  = null;
+let _prayerCoords = null;
+let _prayerReminderIntervalId = null;
+
+async function initPrayerTimes() {
+  // Load saved coords
+  const saved = await KV.get('prayer_coords', null);
+  if(saved) {
+    _prayerCoords = saved;
+    _prayerTimes = PT.calculate(saved.lat, saved.lng, new Date());
+    renderPrayerCountdown();
+    startPrayerCountdownTick();
+  }
+}
+
+function getLocation() {
+  if(!navigator.geolocation) { showToast('GPS tidak didukung browser ini'); return; }
+  showToast('Mendapatkan lokasi...');
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    _prayerCoords = { lat, lng };
+    await KV.set('prayer_coords', { lat, lng });
+    _prayerTimes = PT.calculate(lat, lng, new Date());
+    renderPrayerCountdown();
+    startPrayerCountdownTick();
+    renderSettings();
+    showToast('Lokasi berhasil didapat 📍');
+  }, err => {
+    showToast('Gagal mendapat lokasi. Coba lagi.');
+  }, { timeout: 10000 });
+}
+
+function getNextPrayer(prayerTimes) {
+  const PRAYER_KEYS = ['subuh','dzuhur','ashar','maghrib','isya'];
+  const PRAYER_NAMES = {subuh:'Subuh',dzuhur:'Dzuhur',ashar:'Ashar',maghrib:'Maghrib',isya:'Isya'};
+  const now2 = new Date();
+  const nowMin = now2.getHours()*60 + now2.getMinutes();
+  for(const key of PRAYER_KEYS) {
+    const pMin = PT.toMinutes(prayerTimes[key]);
+    if(pMin > nowMin) return { key, name: PRAYER_NAMES[key], time: prayerTimes[key], minutesLeft: pMin - nowMin };
+  }
+  // Semua sholat hari ini sudah lewat → next adalah Subuh besok
+  const subuhMin = PT.toMinutes(prayerTimes['subuh']);
+  const minutesLeft = (24*60 - nowMin) + subuhMin;
+  return { key:'subuh', name:'Subuh', time: prayerTimes['subuh'], minutesLeft, tomorrow: true };
+}
+
+function renderPrayerCountdown() {
+  const container = el('prayerCountdownContent'); if(!container) return;
+  if(!_prayerTimes) {
+    container.innerHTML = `<div class="prayer-location-prompt">
+      <p style="font-size:.8rem;color:var(--text3);margin-bottom:8px">Izinkan lokasi untuk waktu sholat otomatis</p>
+      <button class="btn-sm btn-primary" id="btnGetLocation">📍 Izinkan Lokasi</button>
+    </div>`;
+    const btn = el('btnGetLocation'); if(btn) btn.addEventListener('click', getLocation);
+    return;
+  }
+
+  const next = getNextPrayer(_prayerTimes);
+  const PRAYER_KEYS = ['subuh','dzuhur','ashar','maghrib','isya'];
+  const PRAYER_NAMES = {subuh:'Subuh',dzuhur:'Dzuhur',ashar:'Ashar',maghrib:'Maghrib',isya:'Isya'};
+
+  // Format countdown
+  const h = Math.floor(next.minutesLeft / 60);
+  const m = next.minutesLeft % 60;
+  const countdownStr = h > 0 ? `${h}j ${m}m` : `${m} menit`;
+  const isUrgent = next.minutesLeft <= 15;
+
+  // Ambil status sholat hari ini
+  const todayStr = today();
+
+  container.innerHTML = `
+    <div class="prayer-next-wrap">
+      <div class="prayer-next-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      </div>
+      <div class="prayer-next-info">
+        <div class="prayer-next-name">${next.tomorrow?'Besok · ':''}${next.name}</div>
+        <div class="prayer-next-time">${next.time} WIB</div>
+      </div>
+      <div class="prayer-countdown-timer${isUrgent?' urgent':''}" id="prayerCountdownTimer">
+        ${countdownStr}
+      </div>
+    </div>
+    <div class="prayer-times-row" id="prayerTimesRow"></div>
+  `;
+
+  // Render semua waktu sholat
+  const rowEl = el('prayerTimesRow');
+  if(rowEl) {
+    rowEl.innerHTML = '';
+    PRAYER_KEYS.forEach(key => {
+      const isNext = key === next.key && !next.tomorrow;
+      const div = document.createElement('div');
+      div.className = `prayer-time-item${isNext?' active-prayer':''}`;
+      div.innerHTML = `<div class="prayer-time-name">${PRAYER_NAMES[key]}</div><div class="prayer-time-val">${_prayerTimes[key]}</div>`;
+      rowEl.appendChild(div);
+    });
+    // Update done status async
+    DB.getAll('sholatLogs').then(logs => {
+      const dayLog = logs.find(s => s.date === todayStr);
+      if(!dayLog) return;
+      PRAYER_KEYS.forEach((key, i) => {
+        if(dayLog.prayers[key]) {
+          rowEl.children[i].classList.add('done-prayer');
+          rowEl.children[i].innerHTML += '<div class="prayer-time-check">✓</div>';
+        }
+      });
+    });
+  }
+
+  // Re-bind location button if shown
+  const locBtn = el('btnGetLocation'); if(locBtn) locBtn.addEventListener('click', getLocation);
+}
+
+let _prayerCountdownInterval = null;
+function startPrayerCountdownTick() {
+  if(_prayerCountdownInterval) clearInterval(_prayerCountdownInterval);
+  _prayerCountdownInterval = setInterval(() => {
+    if(S.currentPage !== 'dashboard') return;
+    if(!_prayerTimes) return;
+    // Recalculate jika hari berganti
+    _prayerTimes = PT.calculate(_prayerCoords.lat, _prayerCoords.lng, new Date());
+    const next = getNextPrayer(_prayerTimes);
+    const h = Math.floor(next.minutesLeft / 60);
+    const m = next.minutesLeft % 60;
+    const countdownStr = h > 0 ? `${h}j ${m}m` : `${m} menit`;
+    const timerEl = el('prayerCountdownTimer');
+    if(timerEl) {
+      timerEl.textContent = countdownStr;
+      timerEl.className = 'prayer-countdown-timer' + (next.minutesLeft <= 15 ? ' urgent' : '');
+    }
+    // Cek reminder
+    checkPrayerReminder(next);
+  }, 30000); // update tiap 30 detik
+}
+
+let _lastPrayerNotified = '';
+async function checkPrayerReminder(next) {
+  const enabled = await KV.get('prayer_reminder_enabled', false);
+  if(!enabled) return;
+  if(Notification.permission !== 'granted') return;
+  const minutesBefore = parseInt(await KV.get('prayer_reminder_minutes', 5));
+  const notifKey = `${today()}_${next.key}`;
+  if(next.minutesLeft <= minutesBefore && next.minutesLeft > 0 && _lastPrayerNotified !== notifKey) {
+    _lastPrayerNotified = notifKey;
+    const msg = minutesBefore === 0
+      ? `Waktunya sholat ${next.name} (${next.time})`
+      : `Sholat ${next.name} dalam ${next.minutesLeft} menit (${next.time})`;
+    try {
+      new Notification('🕌 Reminder Sholat', { body: msg, icon: 'icon-192.png', tag: 'prayer-'+next.key });
+    } catch(e) {}
+    showToast(`🕌 ${msg}`);
+  }
+}
+
 // ===== NOTIFICATIONS =====
 let _notifTimers = [];
 
@@ -728,6 +961,9 @@ async function renderDashboard() {
       </div>
     `;
   }
+
+  // Prayer countdown card
+  renderPrayerCountdown();
 }
 
 // ===== TODO =====
@@ -902,21 +1138,122 @@ function prevDay(ds) {
   return d.toISOString().slice(0,10);
 }
 function renderHabitCalendar(habits, hLogs) {
-  const cal = el('habitCalendar'); if(!cal) return;
-  cal.innerHTML = '';
-  const days = ['M','S','R','K','J','S','M'];
-  for(let i=6; i>=0; i--) {
-    const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = d.toISOString().slice(0,10);
-    const doneCnt = habits.filter(h => hLogs.some(l => l.habitId===h.id && l.date===ds)).length;
-    const isToday = ds === today();
-    const div = document.createElement('div');
-    div.className = `hcal-day${doneCnt>0?' done':''}${isToday?' today':''}`;
-    div.title = `${fmt(ds+'T00:00:00')}: ${doneCnt}/${habits.length} habit`;
-    div.textContent = d.getDate();
-    cal.appendChild(div);
+  renderStreakCalendar(habits, hLogs);
+}
+
+function renderStreakCalendar(habits, hLogs) {
+  const gridEl   = el('habitStreakGrid');
+  const monthsEl = el('habitStreakMonths');
+  const summaryEl= el('habitStreakSummary');
+  if(!gridEl) return;
+
+  const WEEKS = 16;
+  const totalHabits = habits.length || 1;
+  const endDate  = new Date();
+  const startDate= new Date(endDate);
+  startDate.setDate(startDate.getDate() - (WEEKS * 7 - 1));
+  const todayStr = endDate.toISOString().slice(0,10);
+
+  // Build logMap: date -> Set of habitIds
+  const logMap = {};
+  hLogs.forEach(l => {
+    if(!logMap[l.date]) logMap[l.date] = new Set();
+    logMap[l.date].add(l.habitId);
+  });
+
+  // Current streak
+  let currentStreak = 0;
+  const cd = new Date(endDate);
+  for(let i=0; i<365; i++) {
+    const ds = cd.toISOString().slice(0,10);
+    const cnt = logMap[ds] ? logMap[ds].size : 0;
+    if(i > 0 && cnt === 0) break;
+    if(cnt > 0) currentStreak++;
+    cd.setDate(cd.getDate()-1);
+  }
+
+  // Best streak & total active days
+  let bestStreak = 0, tempStreak = 0, totalActiveDays = 0;
+  const allDates = Object.keys(logMap).filter(ds => logMap[ds].size > 0).sort();
+  allDates.forEach((ds, i) => {
+    totalActiveDays++;
+    if(i === 0) { tempStreak = 1; }
+    else {
+      const diff = Math.round((new Date(ds+'T12:00:00') - new Date(allDates[i-1]+'T12:00:00')) / 86400000);
+      tempStreak = diff === 1 ? tempStreak + 1 : 1;
+    }
+    bestStreak = Math.max(bestStreak, tempStreak);
+  });
+
+  // Month labels
+  if(monthsEl) {
+    monthsEl.innerHTML = '';
+    let lastMonth = -1;
+    for(let w=0; w<WEEKS; w++) {
+      const d = new Date(startDate); d.setDate(d.getDate() + w*7);
+      const m = d.getMonth();
+      const span = document.createElement('span');
+      span.className = 'streak-month-label';
+      span.style.flex = '1';
+      span.textContent = m !== lastMonth ? d.toLocaleDateString('id-ID',{month:'short'}) : '';
+      lastMonth = m;
+      monthsEl.appendChild(span);
+    }
+  }
+
+  // Grid
+  gridEl.innerHTML = '';
+  const tooltipEl = el('habitStreakTooltip');
+
+  for(let w=0; w<WEEKS; w++) {
+    const col = document.createElement('div');
+    col.className = 'streak-week-col';
+    for(let d=0; d<7; d++) {
+      const cellDate = new Date(startDate);
+      cellDate.setDate(cellDate.getDate() + w*7 + d);
+      const ds = cellDate.toISOString().slice(0,10);
+      const isFuture = ds > todayStr;
+      const isToday  = ds === todayStr;
+      const cnt = logMap[ds] ? logMap[ds].size : 0;
+      const cell = document.createElement('div');
+      cell.className = 'streak-cell';
+      if(isFuture) {
+        cell.classList.add('future');
+      } else {
+        const pct = cnt / totalHabits;
+        let level = 0;
+        if(pct > 0)    level = 1;
+        if(pct >= 0.25) level = 1;
+        if(pct >= 0.5)  level = 2;
+        if(pct >= 0.75) level = 3;
+        if(pct >= 1.0)  level = 4;
+        cell.classList.add('level-'+level);
+        if(isToday) cell.classList.add('today');
+        // Tooltip
+        const tipText = `${cellDate.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short'})}: ${cnt}/${totalHabits} habit`;
+        const showTip = e => {
+          if(!tooltipEl) return;
+          tooltipEl.textContent = tipText;
+          tooltipEl.classList.add('visible');
+          const ex = e.clientX||e.touches?.[0]?.clientX||0;
+          const ey = e.clientY||e.touches?.[0]?.clientY||0;
+          tooltipEl.style.left = Math.min(ex+10, window.innerWidth-190)+'px';
+          tooltipEl.style.top  = (ey-38)+'px';
+        };
+        cell.addEventListener('mouseenter', showTip);
+        cell.addEventListener('mouseleave', () => tooltipEl && tooltipEl.classList.remove('visible'));
+        cell.addEventListener('touchstart', e => { showTip(e); setTimeout(()=>tooltipEl&&tooltipEl.classList.remove('visible'),2000); }, {passive:true});
+      }
+      col.appendChild(cell);
+    }
+    gridEl.appendChild(col);
+  }
+
+  if(summaryEl) {
+    summaryEl.textContent = `${totalActiveDays} hari aktif · Streak sekarang: ${currentStreak} hari · Terbaik: ${bestStreak} hari`;
   }
 }
+
 function openHabitModal(h=null) {
   el('habitEditId').value = h ? h.id : '';
   el('habitName').value = h ? h.name : '';
@@ -1523,6 +1860,17 @@ async function renderSettings() {
   const dm = el('darkModeToggle');
   if(dm) { dm.checked = S.settings.darkMode; }
 
+  // Prayer reminder state
+  const prayerEnabled = await KV.get('prayer_reminder_enabled', false);
+  const prayerMinutes = await KV.get('prayer_reminder_minutes', 5);
+  const prayerCoords  = await KV.get('prayer_coords', null);
+  const prt = el('prayerReminderToggle'); if(prt) prt.checked = prayerEnabled;
+  const prm = el('prayerReminderMinutes'); if(prm) prm.value = prayerMinutes;
+  const locLabel = el('savedLocationLabel');
+  if(locLabel) locLabel.textContent = prayerCoords
+    ? `${prayerCoords.lat.toFixed(4)}°, ${prayerCoords.lng.toFixed(4)}°`
+    : 'Belum ada';
+
   // Load notification state
   const notifEnabled = await KV.get('notif_enabled', false);
   const morningTime = await KV.get('notif_morning', '07:00');
@@ -1531,10 +1879,8 @@ async function renderSettings() {
   if(notifToggle) notifToggle.checked = notifEnabled;
   const notifTimeSettings = el('notifTimeSettings');
   if(notifTimeSettings) notifTimeSettings.style.display = notifEnabled ? 'block' : 'none';
-  const nMorning = el('notifMorning');
-  if(nMorning) nMorning.value = morningTime;
-  const nEvening = el('notifEvening');
-  if(nEvening) nEvening.value = eveningTime;
+  const nMorning = el('notifMorning'); if(nMorning) nMorning.value = morningTime;
+  const nEvening = el('notifEvening'); if(nEvening) nEvening.value = eveningTime;
 }
 function saveSettings() {
   KV.set('lifehub_settings', S.settings);
@@ -1725,6 +2071,30 @@ function setupEvents() {
   // ACTIVITY LOG
   const _btnPDF = el('btnDownloadPDF');
   if(_btnPDF) _btnPDF.addEventListener('click', generatePDF);
+
+  // PRAYER LOCATION & REMINDER
+  const _btnGetLoc = el('btnGetLocation');
+  if(_btnGetLoc) _btnGetLoc.addEventListener('click', getLocation);
+  const _btnRefreshLoc = el('btnRefreshLocation');
+  if(_btnRefreshLoc) _btnRefreshLoc.addEventListener('click', getLocation);
+  const _prayerReminderToggle = el('prayerReminderToggle');
+  if(_prayerReminderToggle) {
+    _prayerReminderToggle.addEventListener('change', async e => {
+      if(e.target.checked) {
+        const granted = await requestNotificationPermission();
+        if(!granted) { e.target.checked = false; showToast('Aktifkan izin notifikasi dulu'); return; }
+      }
+      await KV.set('prayer_reminder_enabled', e.target.checked);
+      showToast(e.target.checked ? '🕌 Reminder sholat aktif' : 'Reminder sholat dimatikan');
+    });
+  }
+  const _prayerReminderMin = el('prayerReminderMinutes');
+  if(_prayerReminderMin) {
+    _prayerReminderMin.addEventListener('change', async e => {
+      await KV.set('prayer_reminder_minutes', parseInt(e.target.value));
+      showToast('Pengaturan reminder disimpan');
+    });
+  }
 }
 
 // ===== PWA SERVICE WORKER =====
@@ -1750,6 +2120,8 @@ async function init() {
   setInterval(updateSkyBackground, 60000);
   setInterval(updateClock, 1000);
   updateClock();
+  // Init prayer times after DB ready
+  initPrayerTimes();
   setTimeout(() => {
     el('splash').classList.add('fade-out');
     el('app').classList.remove('hidden');

@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <title>LifeHub</title>
-  <meta name="description" content="Made By Azar x ClaudeAI — v2.0"/>
+  <meta name="description" content="Personal Life Management App — v1.3"/>
   <meta name="theme-color" content="#6C63FF"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -134,6 +134,15 @@
             <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg> Todo</div>
             <div id="dashTodos" class="dash-todos-list"></div>
           </div>
+          <div class="dash-card prayer-countdown-card" id="prayerCountdownCard">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Waktu Sholat</div>
+            <div id="prayerCountdownContent">
+              <div class="prayer-location-prompt">
+                <p style="font-size:.8rem;color:var(--text3);margin-bottom:8px">Izinkan lokasi untuk waktu sholat otomatis</p>
+                <button class="btn-sm btn-primary" id="btnGetLocation">📍 Izinkan Lokasi</button>
+              </div>
+            </div>
+          </div>
           <div class="dash-card sholat-card">
             <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Sholat Hari Ini</div>
             <div id="dashSholat" class="dash-sholat-list"></div>
@@ -194,9 +203,28 @@
           <button id="habitNextDay">›</button>
         </div>
         <div class="habit-list" id="habitList"></div>
-        <div class="habit-calendar-wrap">
-          <h4 class="sub-title">Kalender 7 Hari</h4>
-          <div id="habitCalendar" class="habit-calendar"></div>
+        <div class="habit-streak-wrap">
+          <div class="habit-streak-header">
+            <h4 class="sub-title" style="margin:0">Streak Kalender</h4>
+            <div class="habit-streak-legend">
+              <span class="streak-legend-label">Lebih sedikit</span>
+              <span class="streak-legend-box" style="background:var(--bg3)"></span>
+              <span class="streak-legend-box" style="background:#c4b5fd"></span>
+              <span class="streak-legend-box" style="background:#8b5cf6"></span>
+              <span class="streak-legend-box" style="background:#6C63FF"></span>
+              <span class="streak-legend-box" style="background:#4c1d95"></span>
+              <span class="streak-legend-label">Lebih banyak</span>
+            </div>
+          </div>
+          <div class="habit-streak-months" id="habitStreakMonths"></div>
+          <div class="habit-streak-grid-wrap">
+            <div class="habit-streak-days-label">
+              <span></span><span>Sen</span><span></span><span>Rab</span><span></span><span>Jum</span><span></span>
+            </div>
+            <div class="habit-streak-grid" id="habitStreakGrid"></div>
+          </div>
+          <div class="habit-streak-tooltip" id="habitStreakTooltip"></div>
+          <p class="habit-streak-summary" id="habitStreakSummary"></p>
         </div>
       </section>
 
@@ -347,6 +375,29 @@
             </div>
           </div>
           <div class="settings-group">
+            <div class="settings-group-title">🕌 Reminder Sholat</div>
+            <div class="settings-item">
+              <label>Aktifkan Reminder</label>
+              <label class="toggle"><input type="checkbox" id="prayerReminderToggle"/><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-item">
+              <label>Menit sebelum azan</label>
+              <select id="prayerReminderMinutes" class="input-sm" style="width:auto">
+                <option value="0">Tepat waktu</option>
+                <option value="5" selected>5 menit</option>
+                <option value="10">10 menit</option>
+                <option value="15">15 menit</option>
+              </select>
+            </div>
+            <div class="settings-item">
+              <label>Lokasi Tersimpan</label>
+              <span id="savedLocationLabel" style="font-size:.8rem;color:var(--text3)">Belum ada</span>
+            </div>
+            <div class="settings-item">
+              <button class="btn btn-outline btn-sm" id="btnRefreshLocation">📍 Update Lokasi</button>
+            </div>
+          </div>
+          <div class="settings-group">
             <div class="settings-group-title">🔔 Notifikasi</div>
             <div class="settings-item">
               <label>Aktifkan Notifikasi</label>
@@ -370,9 +421,9 @@
           <div class="settings-group">
             <div class="settings-group-title">Tentang</div>
             <div class="settings-item settings-info">
-              <p><strong>LifeHub</strong> v2.0</p>
-              <p>Personal life management app</p>
-              <p>Dibuat dengan ❤️ — 100% offline</p>
+              <p><strong>LifeHub</strong> v2.1</p>
+              <p>Manage Your Own Life</p>
+              <p>Made By Azar & ClaudeAI</p>
             </div>
           </div>
         </div>
