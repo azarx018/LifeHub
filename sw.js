@@ -1,5 +1,5 @@
 // ===== LIFEHUB SERVICE WORKER =====
-const CACHE_NAME = 'lifehub-v2.1.0';
+const CACHE_NAME = 'lifehub-v2.2.0';
 const ASSETS = [
   './',
   './index.html',

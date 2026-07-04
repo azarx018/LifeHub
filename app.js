@@ -73,7 +73,11 @@ const DB = {
 
 // ===== UTILS =====
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
-const today = () => new Date().toISOString().slice(0,10);
+// Gunakan local date bukan UTC — fix timezone bug untuk WIB (UTC+7)
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
 const now = () => Date.now();
 
 // Settings & KV store helper — semua pakai IndexedDB
@@ -470,7 +474,7 @@ async function startSleepSession() {
   const now2 = new Date();
   const session = {
     startTime: now2.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}),
-    startDate: now2.toISOString().slice(0,10),
+    startDate: `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,'0')}-${String(now2.getDate()).padStart(2,'0')}`,
     timestamp: now2.getTime()
   };
   S.sleepSession = session;
@@ -510,7 +514,7 @@ async function endSleepSession(quality) {
 
   const now2 = new Date();
   const endTime = now2.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
-  const endDate = now2.toISOString().slice(0,10);
+  const endDate = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,'0')}-${String(now2.getDate()).padStart(2,'0')}`;
   const elapsed = (now2.getTime() - S.sleepSession.timestamp) / 3600000;
   const duration = Math.max(0.1, Math.round(elapsed * 10) / 10);
 
@@ -711,13 +715,14 @@ function updateClock() {
   clockEl.textContent = `${h}:${m}:${s}`;
 
   // Auto-refresh saat hari berganti (midnight fix)
-  const currentDate = now2.toISOString().slice(0,10);
+  const currentDate = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,"0")}-${String(now2.getDate()).padStart(2,"0")}`;
   if(currentDate !== _lastDate) {
     _lastDate = currentDate;
     // Reset date-scoped states ke hari baru
     S.habitDate  = currentDate;
     S.sholatDate = currentDate;
     S.journalDate= currentDate;
+    S._journalManualNav = false; // reset manual nav flag saat hari berganti
     updateSkyBackground();
     if(S.currentPage === 'dashboard') renderDashboard();
     else if(S.currentPage === 'habit')  renderHabits();
@@ -755,7 +760,11 @@ function navigateTo(page) {
     case 'dashboard': renderDashboard(); break;
     case 'todo': renderTodos(); break;
     case 'habit': renderHabits(); break;
-    case 'journal': renderJournal(); break;
+    case 'journal':
+      // Kalau journalDate sudah tidak sama dengan today (misal timezone shift), sync ulang
+      if(S.journalDate !== today() && !S._journalManualNav) S.journalDate = today();
+      renderJournal();
+      break;
     case 'sholat': renderSholat(); break;
     case 'sleep': renderSleep(); break;
     case 'water': renderWater(); break;
@@ -1128,7 +1137,7 @@ function getLast7Days(habitId, logs) {
   const result = [];
   for(let i=6; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = d.toISOString().slice(0,10);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     result.push(logs.some(l => l.habitId===habitId && l.date===ds));
   }
   return result;
@@ -1149,10 +1158,28 @@ function renderStreakCalendar(habits, hLogs) {
 
   const WEEKS = 16;
   const totalHabits = habits.length || 1;
-  const endDate  = new Date();
-  const startDate= new Date(endDate);
+
+  // Helper: tanggal lokal (bukan UTC) — fix timezone bug WIB
+  const localStr = d => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${dd}`;
+  };
+
+  const todayStr = localStr(new Date());
+
+  // endDate = hari ini (local), startDate = mundur WEEKS*7 hari, align ke Minggu
+  const endDate   = new Date();
+  endDate.setHours(12,0,0,0); // noon agar tidak kena DST
+  const startDate = new Date(endDate);
   startDate.setDate(startDate.getDate() - (WEEKS * 7 - 1));
-  const todayStr = endDate.toISOString().slice(0,10);
+  // Align ke hari Minggu paling dekat sebelumnya
+  startDate.setDate(startDate.getDate() - startDate.getDay());
+  startDate.setHours(12,0,0,0);
+
+  // Total kolom aktual
+  const totalCols = Math.ceil(((endDate - startDate) / 86400000 + 1) / 7);
 
   // Build logMap: date -> Set of habitIds
   const logMap = {};
@@ -1165,7 +1192,7 @@ function renderStreakCalendar(habits, hLogs) {
   let currentStreak = 0;
   const cd = new Date(endDate);
   for(let i=0; i<365; i++) {
-    const ds = cd.toISOString().slice(0,10);
+    const ds = localStr(cd);
     const cnt = logMap[ds] ? logMap[ds].size : 0;
     if(i > 0 && cnt === 0) break;
     if(cnt > 0) currentStreak++;
@@ -1185,17 +1212,19 @@ function renderStreakCalendar(habits, hLogs) {
     bestStreak = Math.max(bestStreak, tempStreak);
   });
 
-  // Month labels
+  // Month labels — iterasi per kolom, pakai tanggal awal kolom
   if(monthsEl) {
     monthsEl.innerHTML = '';
     let lastMonth = -1;
-    for(let w=0; w<WEEKS; w++) {
-      const d = new Date(startDate); d.setDate(d.getDate() + w*7);
-      const m = d.getMonth();
+    for(let w=0; w<totalCols; w++) {
+      const colFirst = new Date(startDate);
+      colFirst.setDate(colFirst.getDate() + w*7);
+      const m = colFirst.getMonth();
       const span = document.createElement('span');
       span.className = 'streak-month-label';
       span.style.flex = '1';
-      span.textContent = m !== lastMonth ? d.toLocaleDateString('id-ID',{month:'short'}) : '';
+      // Tampilkan bulan hanya saat berganti
+      span.textContent = m !== lastMonth ? colFirst.toLocaleDateString('id-ID',{month:'short'}) : '';
       lastMonth = m;
       monthsEl.appendChild(span);
     }
@@ -1205,32 +1234,32 @@ function renderStreakCalendar(habits, hLogs) {
   gridEl.innerHTML = '';
   const tooltipEl = el('habitStreakTooltip');
 
-  for(let w=0; w<WEEKS; w++) {
+  for(let w=0; w<totalCols; w++) {
     const col = document.createElement('div');
     col.className = 'streak-week-col';
     for(let d=0; d<7; d++) {
       const cellDate = new Date(startDate);
       cellDate.setDate(cellDate.getDate() + w*7 + d);
-      const ds = cellDate.toISOString().slice(0,10);
+      const ds = localStr(cellDate);
       const isFuture = ds > todayStr;
       const isToday  = ds === todayStr;
       const cnt = logMap[ds] ? logMap[ds].size : 0;
       const cell = document.createElement('div');
       cell.className = 'streak-cell';
+
       if(isFuture) {
         cell.classList.add('future');
       } else {
         const pct = cnt / totalHabits;
         let level = 0;
-        if(pct > 0)    level = 1;
-        if(pct >= 0.25) level = 1;
+        if(pct >= 0.01) level = 1;
         if(pct >= 0.5)  level = 2;
         if(pct >= 0.75) level = 3;
         if(pct >= 1.0)  level = 4;
         cell.classList.add('level-'+level);
         if(isToday) cell.classList.add('today');
-        // Tooltip
-        const tipText = `${cellDate.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short'})}: ${cnt}/${totalHabits} habit`;
+
+        const tipText = `${cellDate.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}: ${cnt}/${totalHabits} habit`;
         const showTip = e => {
           if(!tooltipEl) return;
           tooltipEl.textContent = tipText;
@@ -1242,7 +1271,10 @@ function renderStreakCalendar(habits, hLogs) {
         };
         cell.addEventListener('mouseenter', showTip);
         cell.addEventListener('mouseleave', () => tooltipEl && tooltipEl.classList.remove('visible'));
-        cell.addEventListener('touchstart', e => { showTip(e); setTimeout(()=>tooltipEl&&tooltipEl.classList.remove('visible'),2000); }, {passive:true});
+        cell.addEventListener('touchstart', e => {
+          showTip(e);
+          setTimeout(()=>tooltipEl&&tooltipEl.classList.remove('visible'), 2000);
+        }, {passive:true});
       }
       col.appendChild(cell);
     }
@@ -1472,7 +1504,7 @@ function renderSholatWeek(sholatLogs) {
   const dayNames = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
   for(let i=6; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = d.toISOString().slice(0,10);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const dayLog = sholatLogs.find(s => s.date===ds);
     const col = document.createElement('div');
     col.className = 'sholat-week-col';
@@ -1530,7 +1562,7 @@ function renderSleepChart(logs, target) {
   const last7 = [];
   for(let i=6; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = d.toISOString().slice(0,10);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const log = logs.find(l => l.date===ds);
     last7.push({ date: ds, dur: log ? log.duration : 0, label: ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getDay()] });
   }
@@ -1797,7 +1829,7 @@ async function renderStats() {
   let habitChartHtml = '<div class="chart-title">Habit Selesai (7 hari)</div><div class="bar-chart">';
   for(let i=6; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = d.toISOString().slice(0,10);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const cnt = hLogs.filter(l => l.date===ds).length;
     const pct = habits.length ? Math.min(100, cnt/habits.length*100) : 0;
     const day = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getDay()];
@@ -1811,7 +1843,7 @@ async function renderStats() {
   let sleepHtml = '<div class="chart-title">Durasi Tidur (7 hari)</div><div class="bar-chart">';
   for(let i=6; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = d.toISOString().slice(0,10);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const log = sleepLogs.find(l => l.date===ds);
     const dur = log ? log.duration : 0;
     const pct = Math.min(100, (dur/10)*100);
@@ -1827,7 +1859,7 @@ async function renderStats() {
   let sholatHtml = '<div class="chart-title">Sholat (7 hari)</div><div class="bar-chart">';
   for(let i=6; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = d.toISOString().slice(0,10);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const log = sholatLogs.find(l => l.date===ds);
     const cnt = log ? Object.values(log.prayers||{}).filter(Boolean).length : 0;
     const pct = cnt/5*100;
@@ -1971,12 +2003,16 @@ function setupEvents() {
   el('journalSearch').addEventListener('input', e => { S.journalSearch = e.target.value; renderJournal(); });
   el('journalPrevDay').addEventListener('click', () => {
     const d = new Date(S.journalDate+'T12:00:00'); d.setDate(d.getDate()-1);
-    S.journalDate = d.toISOString().slice(0,10); renderJournal();
+    S.journalDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    S._journalManualNav = S.journalDate !== today(); // tandai manual jika bukan hari ini
+    renderJournal();
   });
   el('journalNextDay').addEventListener('click', () => {
-    if(S.journalDate >= today()) return; // tidak bisa maju melewati hari ini
+    if(S.journalDate >= today()) return;
     const d = new Date(S.journalDate+'T12:00:00'); d.setDate(d.getDate()+1);
-    S.journalDate = d.toISOString().slice(0,10); renderJournal();
+    S.journalDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    S._journalManualNav = S.journalDate !== today();
+    renderJournal();
   });
   document.getElementById('journalModal').addEventListener('click', e => {
     const btn = e.target.closest('.mood-btn'); if(!btn) return;
@@ -2136,7 +2172,7 @@ function getDateRange(rangeVal) {
   const end = today();
   if(rangeVal === 'all') return { start: '2000-01-01', end };
   const d = new Date(); d.setDate(d.getDate() - (parseInt(rangeVal)-1));
-  return { start: d.toISOString().slice(0,10), end };
+  return { start: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, end };
 }
 function inRange(date, range) { return date >= range.start && date <= range.end; }
 function daysBetween(a, b) {
