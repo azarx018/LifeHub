@@ -1157,29 +1157,22 @@ function renderStreakCalendar(habits, hLogs) {
   if(!gridEl) return;
 
   const WEEKS = 16;
+  const DAYS  = WEEKS * 7; // 112 hari
   const totalHabits = habits.length || 1;
 
-  // Helper: tanggal lokal (bukan UTC) — fix timezone bug WIB
-  const localStr = d => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const dd = String(d.getDate()).padStart(2,'0');
-    return `${y}-${m}-${dd}`;
-  };
+  // Helper: tanggal lokal — fix timezone WIB
+  const localStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
-  const todayStr = localStr(new Date());
-
-  // endDate = hari ini (local), startDate = mundur WEEKS*7 hari, align ke Minggu
-  const endDate   = new Date();
-  endDate.setHours(12,0,0,0); // noon agar tidak kena DST
-  const startDate = new Date(endDate);
-  startDate.setDate(startDate.getDate() - (WEEKS * 7 - 1));
-  // Align ke hari Minggu paling dekat sebelumnya
-  startDate.setDate(startDate.getDate() - startDate.getDay());
-  startDate.setHours(12,0,0,0);
-
-  // Total kolom aktual
-  const totalCols = Math.ceil(((endDate - startDate) / 86400000 + 1) / 7);
+  // Buat array 112 hari: index 0 = 111 hari lalu, index 111 = hari ini
+  const days = [];
+  for(let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setHours(12,0,0,0);
+    d.setDate(d.getDate() - i);
+    days.push(d);
+  }
+  const todayStr = localStr(days[days.length - 1]);
+  const totalCols = WEEKS; // selalu tepat 16 kolom
 
   // Build logMap: date -> Set of habitIds
   const logMap = {};
@@ -1188,15 +1181,17 @@ function renderStreakCalendar(habits, hLogs) {
     logMap[l.date].add(l.habitId);
   });
 
-  // Current streak
+  // Current streak — hitung mundur dari hari ini
   let currentStreak = 0;
-  const cd = new Date(endDate);
-  for(let i=0; i<365; i++) {
-    const ds = localStr(cd);
-    const cnt = logMap[ds] ? logMap[ds].size : 0;
-    if(i > 0 && cnt === 0) break;
-    if(cnt > 0) currentStreak++;
-    cd.setDate(cd.getDate()-1);
+  {
+    const now3 = new Date(); now3.setHours(12,0,0,0);
+    for(let i = 0; i < 365; i++) {
+      const ds = localStr(now3);
+      const cnt = logMap[ds] ? logMap[ds].size : 0;
+      if(i > 0 && cnt === 0) break;
+      if(cnt > 0) currentStreak++;
+      now3.setDate(now3.getDate() - 1);
+    }
   }
 
   // Best streak & total active days
@@ -1212,70 +1207,69 @@ function renderStreakCalendar(habits, hLogs) {
     bestStreak = Math.max(bestStreak, tempStreak);
   });
 
-  // Month labels — iterasi per kolom, pakai tanggal awal kolom
+  // Month labels — tampilkan bulan saat ada tanggal 1 di kolom tsb, atau kolom pertama
   if(monthsEl) {
     monthsEl.innerHTML = '';
-    let lastMonth = -1;
-    for(let w=0; w<totalCols; w++) {
-      const colFirst = new Date(startDate);
-      colFirst.setDate(colFirst.getDate() + w*7);
-      const m = colFirst.getMonth();
+    let shownMonths = new Set();
+    for(let w = 0; w < WEEKS; w++) {
+      const colDays = days.slice(w * 7, w * 7 + 7);
+      // Cari hari pertama bulan baru dalam kolom ini
+      const newMonthDay = colDays.find(d => d.getDate() === 1);
+      const labelDay = newMonthDay || (w === 0 ? colDays[0] : null);
       const span = document.createElement('span');
       span.className = 'streak-month-label';
       span.style.flex = '1';
-      // Tampilkan bulan hanya saat berganti
-      span.textContent = m !== lastMonth ? colFirst.toLocaleDateString('id-ID',{month:'short'}) : '';
-      lastMonth = m;
+      if(labelDay && !shownMonths.has(labelDay.getMonth())) {
+        span.textContent = labelDay.toLocaleDateString('id-ID', {month:'short'});
+        shownMonths.add(labelDay.getMonth());
+      }
       monthsEl.appendChild(span);
     }
   }
 
-  // Grid
+  // Grid — 16 kolom × 7 baris, langsung dari array days
   gridEl.innerHTML = '';
   const tooltipEl = el('habitStreakTooltip');
 
-  for(let w=0; w<totalCols; w++) {
+  for(let w = 0; w < WEEKS; w++) {
     const col = document.createElement('div');
     col.className = 'streak-week-col';
-    for(let d=0; d<7; d++) {
-      const cellDate = new Date(startDate);
-      cellDate.setDate(cellDate.getDate() + w*7 + d);
+    for(let d = 0; d < 7; d++) {
+      const idx = w * 7 + d;
+      const cellDate = days[idx];
       const ds = localStr(cellDate);
-      const isFuture = ds > todayStr;
-      const isToday  = ds === todayStr;
+      const isToday = ds === todayStr;
       const cnt = logMap[ds] ? logMap[ds].size : 0;
+
       const cell = document.createElement('div');
       cell.className = 'streak-cell';
 
-      if(isFuture) {
-        cell.classList.add('future');
-      } else {
-        const pct = cnt / totalHabits;
-        let level = 0;
-        if(pct >= 0.01) level = 1;
-        if(pct >= 0.5)  level = 2;
-        if(pct >= 0.75) level = 3;
-        if(pct >= 1.0)  level = 4;
-        cell.classList.add('level-'+level);
-        if(isToday) cell.classList.add('today');
+      const pct = cnt / totalHabits;
+      let level = 0;
+      if(pct >= 0.01) level = 1;
+      if(pct >= 0.5)  level = 2;
+      if(pct >= 0.75) level = 3;
+      if(pct >= 1.0)  level = 4;
+      cell.classList.add('level-' + level);
+      if(isToday) cell.classList.add('today');
 
-        const tipText = `${cellDate.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}: ${cnt}/${totalHabits} habit`;
-        const showTip = e => {
-          if(!tooltipEl) return;
-          tooltipEl.textContent = tipText;
-          tooltipEl.classList.add('visible');
-          const ex = e.clientX||e.touches?.[0]?.clientX||0;
-          const ey = e.clientY||e.touches?.[0]?.clientY||0;
-          tooltipEl.style.left = Math.min(ex+10, window.innerWidth-190)+'px';
-          tooltipEl.style.top  = (ey-38)+'px';
-        };
-        cell.addEventListener('mouseenter', showTip);
-        cell.addEventListener('mouseleave', () => tooltipEl && tooltipEl.classList.remove('visible'));
-        cell.addEventListener('touchstart', e => {
-          showTip(e);
-          setTimeout(()=>tooltipEl&&tooltipEl.classList.remove('visible'), 2000);
-        }, {passive:true});
-      }
+      const tipText = `${cellDate.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}: ${cnt}/${totalHabits} habit`;
+      const showTip = e => {
+        if(!tooltipEl) return;
+        tooltipEl.textContent = tipText;
+        tooltipEl.classList.add('visible');
+        const ex = e.clientX || e.touches?.[0]?.clientX || 0;
+        const ey = e.clientY || e.touches?.[0]?.clientY || 0;
+        tooltipEl.style.left = Math.min(ex + 10, window.innerWidth - 190) + 'px';
+        tooltipEl.style.top  = (ey - 38) + 'px';
+      };
+      cell.addEventListener('mouseenter', showTip);
+      cell.addEventListener('mouseleave', () => tooltipEl && tooltipEl.classList.remove('visible'));
+      cell.addEventListener('touchstart', e => {
+        showTip(e);
+        setTimeout(() => tooltipEl && tooltipEl.classList.remove('visible'), 2000);
+      }, {passive: true});
+
       col.appendChild(cell);
     }
     gridEl.appendChild(col);
