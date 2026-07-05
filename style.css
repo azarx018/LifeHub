@@ -801,30 +801,42 @@ textarea.input-field{resize:vertical;min-height:90px}
 .activity-empty{text-align:center;padding:30px;color:var(--text3);font-size:.88rem}
 
 /* ===== STREAK KALENDER GITHUB-STYLE ===== */
-.habit-streak-wrap{margin-top:18px;padding:14px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.habit-streak-wrap{margin-top:18px;padding:14px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
 .habit-streak-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
 .habit-streak-legend{display:flex;align-items:center;gap:3px}
 .streak-legend-label{font-size:.65rem;color:var(--text3);margin:0 3px}
 .streak-legend-box{width:11px;height:11px;border-radius:2px;flex-shrink:0}
-.habit-streak-months{display:flex;gap:0;margin-bottom:3px;padding-left:26px}
-.streak-month-label{font-size:.65rem;color:var(--text3);text-align:left;min-width:0}
-.habit-streak-grid-wrap{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px}
-.habit-streak-days-label{display:flex;flex-direction:column;gap:1.5px;flex-shrink:0;padding-top:1px}
-.habit-streak-days-label span{height:11px;font-size:.6rem;color:var(--text3);line-height:11px;text-align:right;width:22px}
+
+/* Scroll container — months dan grid scroll bersama */
+.habit-streak-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.habit-streak-inner{display:inline-flex;flex-direction:column;gap:3px;padding-bottom:2px}
+
+/* Month labels — width = cell(13) + gap(2) = 15px per kolom */
+.habit-streak-months{display:flex;gap:0;padding-left:30px;margin-bottom:1px}
+.streak-month-label{
+  width:15px;font-size:.6rem;color:var(--text3);
+  overflow:visible;white-space:nowrap;flex-shrink:0;
+}
+
+/* Grid row */
+.habit-streak-grid-wrap{display:flex;gap:4px;align-items:flex-start}
+.habit-streak-days-label{display:flex;flex-direction:column;gap:2px;flex-shrink:0}
+.habit-streak-days-label span{height:13px;width:26px;font-size:.58rem;color:var(--text3);line-height:13px;text-align:right}
 .habit-streak-grid{display:flex;gap:2px;align-items:flex-start}
 .streak-week-col{display:flex;flex-direction:column;gap:2px}
 .streak-cell{
-  width:11px;height:11px;border-radius:2px;
-  cursor:pointer;transition:transform .15s ease;
-  flex-shrink:0;
+  width:13px;height:13px;border-radius:2px;
+  cursor:pointer;flex-shrink:0;
+  transition:transform .12s ease;
 }
-.streak-cell:hover{transform:scale(1.4);z-index:10;position:relative}
+.streak-cell:active{transform:scale(1.3)}
+@media(hover:hover){.streak-cell:hover{transform:scale(1.4);z-index:10;position:relative}}
 .streak-cell.level-0{background:var(--bg3)}
 .streak-cell.level-1{background:#c4b5fd}
 .streak-cell.level-2{background:#8b5cf6}
 .streak-cell.level-3{background:#6C63FF}
 .streak-cell.level-4{background:#4c1d95}
-.streak-cell.today{outline:1.5px solid var(--primary);outline-offset:1px}
+.streak-cell.today{outline:2px solid var(--primary);outline-offset:1px}
 .streak-cell.future{background:transparent;cursor:default}
 .habit-streak-tooltip{
   display:none;position:fixed;
