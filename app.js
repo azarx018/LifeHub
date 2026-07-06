@@ -111,6 +111,7 @@ const S = {
   journalDate: today(),
   journalSearch: '',
   activityRange: 7,
+  activityWeekOffset: 0, // 0 = minggu ini, -1 = minggu lalu, dst
   settings: { name:'Azhar', darkMode:false, sleepTarget:8, waterTarget:8 },
   todos: [], habits: [], habitLogs: [], journals: [],
   sleepLogs: [], goals: [], milestones: [], waterLogs: [],
@@ -2131,6 +2132,16 @@ function setupEvents() {
   const _btnPDF = el('btnDownloadPDF');
   if(_btnPDF) _btnPDF.addEventListener('click', generatePDF);
 
+  el('activityPrevWeek').addEventListener('click', () => {
+    S.activityWeekOffset--;
+    renderActivity();
+  });
+  el('activityNextWeek').addEventListener('click', () => {
+    if(S.activityWeekOffset >= 0) return;
+    S.activityWeekOffset++;
+    renderActivity();
+  });
+
   // PRAYER LOCATION & REMINDER
   const _btnGetLoc = el('btnGetLocation');
   if(_btnGetLoc) _btnGetLoc.addEventListener('click', getLocation);
@@ -2191,15 +2202,22 @@ async function init() {
   setTimeout(() => scheduleNotifications(), 3000);
 }
 // ===== ACTIVITY LOG v2.0 =====
-function getDateRange(rangeVal) {
+function getDateRange(rangeVal, weekOffset) {
+  weekOffset = weekOffset || 0;
   const end = today();
   if(rangeVal === 'all') return { start: '2000-01-01', end };
   if(rangeVal === 7 || rangeVal === '7') {
-    // Pakai Senin–Minggu minggu berjalan (sama seperti habit tracker)
+    // Senin–Minggu minggu berjalan, offset dalam minggu
     const monday = getMondayOfWeek(end);
-    return { start: monday, end };
+    const mondayDate = new Date(monday + 'T12:00:00');
+    mondayDate.setDate(mondayDate.getDate() + (weekOffset * 7));
+    const sundayDate = new Date(mondayDate);
+    sundayDate.setDate(sundayDate.getDate() + 6);
+    const localStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    // Jangan lewati hari ini untuk end date
+    const endDate = localStr(sundayDate) > end ? end : localStr(sundayDate);
+    return { start: localStr(mondayDate), end: endDate };
   }
-  // 30 hari, 90 hari = rolling mundur dari hari ini
   const d = new Date(); d.setHours(12,0,0,0);
   d.setDate(d.getDate() - (parseInt(rangeVal)-1));
   return { start: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, end };
@@ -2210,14 +2228,35 @@ function daysBetween(a, b) {
 }
 
 async function renderActivity() {
-  const range = getDateRange(S.activityRange);
-  // periodDays: untuk 7 hari selalu 7 (Senin–Minggu penuh), bukan hari yang sudah berlalu
-  const totalDays = S.activityRange === 'all' ? null : parseInt(S.activityRange);
-  // Label range
+  const range = getDateRange(S.activityRange, S.activityWeekOffset);
   const isWeekly = S.activityRange === 7 || S.activityRange === '7';
+  const totalDays = S.activityRange === 'all' ? null : parseInt(S.activityRange);
+
+  // Update week nav UI
+  const weekNav = el('activityWeekNav');
+  const weekLabel = el('activityWeekLabel');
+  const prevBtn = el('activityPrevWeek');
+  const nextBtn = el('activityNextWeek');
+  if(weekNav) weekNav.classList.toggle('visible', isWeekly);
+  if(isWeekly && weekLabel) {
+    const startFmt = fmtShort(range.start + 'T12:00:00');
+    const endFmt   = fmtShort(range.end   + 'T12:00:00');
+    weekLabel.textContent = S.activityWeekOffset === 0
+      ? `Minggu Ini (${startFmt} – ${endFmt})`
+      : S.activityWeekOffset === -1
+        ? `Minggu Lalu (${startFmt} – ${endFmt})`
+        : `${Math.abs(S.activityWeekOffset)} Minggu Lalu (${startFmt} – ${endFmt})`;
+  }
+  if(nextBtn) nextBtn.disabled = !isWeekly || S.activityWeekOffset >= 0;
+
+  // Label range untuk tampilan
   const rangeLabel = S.activityRange === 'all' ? 'Semua Waktu'
-    : isWeekly ? `Minggu Ini (${fmtShort(range.start+'T12:00:00')} – ${fmtShort(range.end+'T12:00:00')})`
+    : isWeekly
+      ? (S.activityWeekOffset === 0 ? 'Minggu Ini'
+        : S.activityWeekOffset === -1 ? 'Minggu Lalu'
+        : `${Math.abs(S.activityWeekOffset)} Minggu Lalu`)
     : `${S.activityRange} Hari Terakhir`;
+  const isWeeklyPDF = isWeekly;
 
   // Load all data
   const [todos, habits, hLogs, journals, sleepLogs, waterLogs, sholatLogs, goals, milestones] = await Promise.all([
@@ -2241,7 +2280,8 @@ async function renderActivity() {
     ...rSholat.map(s=>s.date)
   ]);
   const activeDays = activeDates.size;
-  const periodDays = totalDays || daysBetween(range.start, range.end);
+  // periodDays: weekly selalu 7, lainnya dari range atau totalDays
+  const periodDays = isWeekly ? 7 : (totalDays || daysBetween(range.start, range.end));
 
   // Sholat stats
   const totalSholatPossible = periodDays * 5;
@@ -2283,21 +2323,25 @@ async function renderActivity() {
 
   // Render
   const container = el('activityContent'); if(!container) return;
-  const dateLabel = S.activityRange === 'all' ? 'sejak awal'
-    : isWeekly ? `Senin ${fmt(range.start+'T12:00:00')} — Minggu ${fmt(range.end+'T12:00:00')}`
-    : `${fmt(range.start+'T12:00:00')} — ${fmt(range.end+'T12:00:00')}`;
-  const weeklyNote = isWeekly ? ' (reset tiap Senin)' : '';
+  const weeklyNote = isWeekly && S.activityWeekOffset === 0 ? ' · reset tiap Senin' : '';
+  const periodLabel = isWeekly
+    ? `${fmtShort(range.start+'T12:00:00')} – ${fmtShort(range.end+'T12:00:00')}`
+    : S.activityRange === 'all' ? 'sejak awal'
+    : `${fmtShort(range.start+'T12:00:00')} – ${fmtShort(range.end+'T12:00:00')}`;
+  const summaryIntro = isWeekly
+    ? (S.activityWeekOffset === 0 ? 'Minggu ini' : S.activityWeekOffset === -1 ? 'Minggu lalu' : `${Math.abs(S.activityWeekOffset)} minggu lalu`)
+    : `Selama ${periodDays} hari ke belakang`;
 
   container.innerHTML = `
     <div class="activity-date-range">
-      📅 <strong>${rangeLabel}</strong>${weeklyNote} · ${activeDays} hari aktif dari ${periodDays} hari
+      📅 <strong>${rangeLabel}</strong> · ${periodLabel}${weeklyNote} · ${activeDays} hari aktif dari ${periodDays} hari
     </div>
 
     <!-- Ringkasan Umum -->
     <div class="activity-summary-box">
       <div class="activity-summary-title">✨ Ringkasan Aktivitas</div>
       <div class="activity-summary-text">
-        ${isWeekly ? 'Minggu ini' : `Selama ${periodDays} hari ke belakang`}, kamu aktif di <strong>${activeDays} hari</strong>.
+        ${summaryIntro}, kamu aktif di <strong>${activeDays} hari</strong>.
         Berhasil menyelesaikan <strong>${rTodos.length} todo</strong>,
         melakukan sholat <strong>${totalSholatDone} kali</strong> dari ${totalSholatPossible} waktu (${sholatPct}%),
         dan menulis <strong>${rJournals.length} jurnal</strong>.
@@ -2422,19 +2466,26 @@ async function renderActivity() {
   // Setup range filter buttons
   qsa('.activity-filter-row .filter-btn').forEach(b => {
     b.classList.toggle('active', String(b.dataset.range) === String(S.activityRange));
-    b.onclick = () => { S.activityRange = b.dataset.range === 'all' ? 'all' : parseInt(b.dataset.range); renderActivity(); };
+    b.onclick = () => {
+      S.activityRange = b.dataset.range === 'all' ? 'all' : parseInt(b.dataset.range);
+      S.activityWeekOffset = 0; // reset ke minggu ini saat ganti filter
+      renderActivity();
+    };
   });
 }
 
 // ===== PDF GENERATOR =====
 async function generatePDF() {
-  const range    = getDateRange(S.activityRange);
+  const range    = getDateRange(S.activityRange, S.activityWeekOffset);
   const isWeeklyPDF = S.activityRange === 7 || S.activityRange === '7';
+  const weekOffsetLabel = S.activityWeekOffset === 0 ? 'Minggu Ini'
+    : S.activityWeekOffset === -1 ? 'Minggu Lalu'
+    : `${Math.abs(S.activityWeekOffset)} Minggu Lalu`;
   const rangeLabel = S.activityRange === 'all' ? 'Semua Waktu'
-    : isWeeklyPDF ? `Minggu Ini (${fmtShort(range.start+'T12:00:00')} – ${fmtShort(range.end+'T12:00:00')})`
+    : isWeeklyPDF ? `${weekOffsetLabel} (${fmtShort(range.start+'T12:00:00')} – ${fmtShort(range.end+'T12:00:00')})`
     : `${S.activityRange} Hari Terakhir`;
   const name     = S.settings.name || 'Azhar';
-  const periodDays = S.activityRange === 'all' ? daysBetween(range.start, range.end) : parseInt(S.activityRange);
+  const periodDays = isWeeklyPDF ? 7 : (S.activityRange === 'all' ? daysBetween(range.start, range.end) : parseInt(S.activityRange));
 
   const [todos, habits, hLogs, journals, sleepLogs, waterLogs, sholatLogs, goals, milestones] = await Promise.all([
     DB.getAll('todos'), DB.getAll('habits'), DB.getAll('habitLogs'),

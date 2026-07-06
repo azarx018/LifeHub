@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <title>LifeHub</title>
-  <meta name="description" content="Personal Life Management App — v1.3"/>
+  <meta name="description" content="Personal Life Management App — v2.5"/>
   <meta name="theme-color" content="#6C63FF"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -342,6 +342,11 @@
           <button class="filter-btn" data-range="90">3 Bulan</button>
           <button class="filter-btn" data-range="all">Semua</button>
         </div>
+        <div class="activity-week-nav" id="activityWeekNav">
+          <button class="activity-week-btn" id="activityPrevWeek">‹</button>
+          <span class="activity-week-label" id="activityWeekLabel">Minggu Ini</span>
+          <button class="activity-week-btn" id="activityNextWeek">›</button>
+        </div>
         <div id="activityContent"></div>
       </section>
 
@@ -425,7 +430,7 @@
           <div class="settings-group">
             <div class="settings-group-title">Tentang</div>
             <div class="settings-item settings-info">
-              <p><strong>LifeHub</strong> v2.4</p>
+              <p><strong>LifeHub</strong> v2.5</p>
               <p>Manage Your Own Life</p>
               <p>In Collaboration Azar & ClaudeAI</p>
             </div>
