@@ -2194,7 +2194,14 @@ async function init() {
 function getDateRange(rangeVal) {
   const end = today();
   if(rangeVal === 'all') return { start: '2000-01-01', end };
-  const d = new Date(); d.setDate(d.getDate() - (parseInt(rangeVal)-1));
+  if(rangeVal === 7 || rangeVal === '7') {
+    // Pakai Senin–Minggu minggu berjalan (sama seperti habit tracker)
+    const monday = getMondayOfWeek(end);
+    return { start: monday, end };
+  }
+  // 30 hari, 90 hari = rolling mundur dari hari ini
+  const d = new Date(); d.setHours(12,0,0,0);
+  d.setDate(d.getDate() - (parseInt(rangeVal)-1));
   return { start: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, end };
 }
 function inRange(date, range) { return date >= range.start && date <= range.end; }
@@ -2204,7 +2211,13 @@ function daysBetween(a, b) {
 
 async function renderActivity() {
   const range = getDateRange(S.activityRange);
+  // periodDays: untuk 7 hari selalu 7 (Senin–Minggu penuh), bukan hari yang sudah berlalu
   const totalDays = S.activityRange === 'all' ? null : parseInt(S.activityRange);
+  // Label range
+  const isWeekly = S.activityRange === 7 || S.activityRange === '7';
+  const rangeLabel = S.activityRange === 'all' ? 'Semua Waktu'
+    : isWeekly ? `Minggu Ini (${fmtShort(range.start+'T12:00:00')} – ${fmtShort(range.end+'T12:00:00')})`
+    : `${S.activityRange} Hari Terakhir`;
 
   // Load all data
   const [todos, habits, hLogs, journals, sleepLogs, waterLogs, sholatLogs, goals, milestones] = await Promise.all([
@@ -2270,19 +2283,21 @@ async function renderActivity() {
 
   // Render
   const container = el('activityContent'); if(!container) return;
-  const rangeLabel = S.activityRange==='all' ? 'Semua Waktu' : `${S.activityRange} Hari Terakhir`;
-  const dateLabel  = S.activityRange==='all' ? 'sejak awal' : `${fmt(range.start+'T12:00:00')} — ${fmt(range.end+'T12:00:00')}`;
+  const dateLabel = S.activityRange === 'all' ? 'sejak awal'
+    : isWeekly ? `Senin ${fmt(range.start+'T12:00:00')} — Minggu ${fmt(range.end+'T12:00:00')}`
+    : `${fmt(range.start+'T12:00:00')} — ${fmt(range.end+'T12:00:00')}`;
+  const weeklyNote = isWeekly ? ' (reset tiap Senin)' : '';
 
   container.innerHTML = `
     <div class="activity-date-range">
-      📅 <strong>${rangeLabel}</strong> · ${dateLabel} · ${activeDays} hari aktif dari ${periodDays} hari
+      📅 <strong>${rangeLabel}</strong>${weeklyNote} · ${activeDays} hari aktif dari ${periodDays} hari
     </div>
 
     <!-- Ringkasan Umum -->
     <div class="activity-summary-box">
       <div class="activity-summary-title">✨ Ringkasan Aktivitas</div>
       <div class="activity-summary-text">
-        Selama ${periodDays} hari ke belakang, kamu aktif di <strong>${activeDays} hari</strong>.
+        ${isWeekly ? 'Minggu ini' : `Selama ${periodDays} hari ke belakang`}, kamu aktif di <strong>${activeDays} hari</strong>.
         Berhasil menyelesaikan <strong>${rTodos.length} todo</strong>,
         melakukan sholat <strong>${totalSholatDone} kali</strong> dari ${totalSholatPossible} waktu (${sholatPct}%),
         dan menulis <strong>${rJournals.length} jurnal</strong>.
@@ -2414,9 +2429,12 @@ async function renderActivity() {
 // ===== PDF GENERATOR =====
 async function generatePDF() {
   const range    = getDateRange(S.activityRange);
-  const rangeLabel = S.activityRange==='all' ? 'Semua Waktu' : `${S.activityRange} Hari Terakhir`;
+  const isWeeklyPDF = S.activityRange === 7 || S.activityRange === '7';
+  const rangeLabel = S.activityRange === 'all' ? 'Semua Waktu'
+    : isWeeklyPDF ? `Minggu Ini (${fmtShort(range.start+'T12:00:00')} – ${fmtShort(range.end+'T12:00:00')})`
+    : `${S.activityRange} Hari Terakhir`;
   const name     = S.settings.name || 'Azhar';
-  const periodDays = S.activityRange==='all' ? daysBetween(range.start, range.end) : parseInt(S.activityRange);
+  const periodDays = S.activityRange === 'all' ? daysBetween(range.start, range.end) : parseInt(S.activityRange);
 
   const [todos, habits, hLogs, journals, sleepLogs, waterLogs, sholatLogs, goals, milestones] = await Promise.all([
     DB.getAll('todos'), DB.getAll('habits'), DB.getAll('habitLogs'),
