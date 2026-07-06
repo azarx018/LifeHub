@@ -435,6 +435,7 @@ textarea.input-field{resize:vertical;min-height:90px}
   display:flex;align-items:center;justify-content:center;color:var(--text3);
 }
 .sholat-week-dot.done{background:var(--accent);color:white}
+.sholat-week-dot.future-dot{background:transparent;border:1px dashed var(--border)}
 
 /* ===== SLEEP ===== */
 .sleep-target-card{margin-bottom:11px}

@@ -1076,9 +1076,14 @@ async function renderHabits() {
   habits.forEach(h => {
     const done = hLogs.some(l => l.habitId===h.id && l.date===S.habitDate);
     const streak = calcStreak(h.id, hLogs);
-    const last7 = getLast7Days(h.id, hLogs);
-    const weekDone = last7.filter(Boolean).length;
+    const monday = getMondayOfWeek(S.habitDate);
+    const weekDays = getWeekDays(monday);
+    const weekDone = weekDays.filter(ds => hLogs.some(l => l.habitId === h.id && l.date === ds)).length;
     const pct = Math.round(weekDone / (h.target||7) * 100);
+    // Label minggu: "Sen 30 Jun – Min 6 Jul"
+    const sundayDate = new Date(monday + 'T12:00:00');
+    sundayDate.setDate(sundayDate.getDate() + 6);
+    const weekLabel = `${weekDone}/${h.target||7} minggu ini`;
     const item = document.createElement('div');
     item.className = 'habit-item animate-in';
     item.innerHTML = `
@@ -1095,7 +1100,7 @@ async function renderHabits() {
       </div>
       <div class="habit-progress-bar"><div class="habit-progress-fill" style="width:${Math.min(100,pct)}%;background:${h.color||'#6C63FF'}"></div></div>
       <div class="habit-stats-row">
-        <span class="habit-stat">${weekDone}/${h.target||7} minggu ini</span>
+        <span class="habit-stat">${weekLabel}</span>
         <span class="habit-stat">${pct}%</span>
         <div style="display:flex;gap:6px">
           <button class="icon-btn" style="width:26px;height:26px" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -1133,18 +1138,38 @@ function calcStreak(habitId, logs) {
   }
   return streak;
 }
-function getLast7Days(habitId, logs) {
-  const result = [];
-  for(let i=6; i>=0; i--) {
-    const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    result.push(logs.some(l => l.habitId===habitId && l.date===ds));
-  }
-  return result;
+// Helper: dapat tanggal Senin minggu ini
+function getMondayOfWeek(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const day = d.getDay(); // 0=Min,1=Sen,...,6=Sab
+  // Senin = hari 1, jika hari ini Minggu(0) mundur 6 hari, selain itu mundur (day-1)
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+
+// Dapat array 7 hari dalam minggu yang sama (Senin–Minggu)
+function getWeekDays(mondayStr) {
+  const days = [];
+  for(let i = 0; i < 7; i++) {
+    const d = new Date(mondayStr + 'T12:00:00');
+    d.setDate(d.getDate() + i);
+    days.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+  }
+  return days;
+}
+
+function getLast7Days(habitId, logs) {
+  // Gunakan Senin–Minggu minggu berjalan (bukan rolling 7 hari)
+  const monday = getMondayOfWeek(today());
+  const weekDays = getWeekDays(monday);
+  return weekDays.map(ds => logs.some(l => l.habitId === habitId && l.date === ds));
+}
+
 function prevDay(ds) {
-  const d = new Date(ds+'T12:00:00'); d.setDate(d.getDate()-1);
-  return d.toISOString().slice(0,10);
+  const d = new Date(ds + 'T12:00:00');
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function renderHabitCalendar(habits, hLogs) {
   renderStreakCalendar(habits, hLogs);
@@ -1496,23 +1521,27 @@ function renderSholatWeek(sholatLogs) {
   const grid = el('sholatWeekGrid'); if(!grid) return;
   grid.innerHTML = '';
   const dayNames = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
-  for(let i=6; i>=0; i--) {
-    const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const dayLog = sholatLogs.find(s => s.date===ds);
+  // Pakai Senin–Minggu minggu berjalan
+  const monday = getMondayOfWeek(today());
+  const weekDays = getWeekDays(monday);
+  weekDays.forEach(ds => {
+    const d = new Date(ds + 'T12:00:00');
+    const dayLog = sholatLogs.find(s => s.date === ds);
+    const isToday = ds === today();
+    const isFuture = ds > today();
     const col = document.createElement('div');
     col.className = 'sholat-week-col';
-    col.innerHTML = `<div class="sholat-week-day">${dayNames[d.getDay()]}</div>`;
+    col.innerHTML = `<div class="sholat-week-day" style="${isToday?'color:var(--primary);font-weight:700':''}">${dayNames[d.getDay()]}</div>`;
     PRAYERS.forEach(p => {
       const done = dayLog && dayLog.prayers[p.key];
       const dot = document.createElement('div');
-      dot.className = `sholat-week-dot ${done?'done':''}`;
+      dot.className = `sholat-week-dot ${done?'done':''}${isFuture?' future-dot':''}`;
       dot.title = p.name;
       dot.textContent = done ? '✓' : '';
       col.appendChild(dot);
     });
     grid.appendChild(col);
-  }
+  });
 }
 
 // ===== SLEEP =====
