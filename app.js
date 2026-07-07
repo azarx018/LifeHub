@@ -2673,23 +2673,25 @@ async function generatePDF() {
   showToast('PDF siap! Pilih "Save as PDF" saat print 📄');
 }
 
-// ===== PIXEL ART ANIMATIONS =====
+// ===== PIXEL ART ANIMATIONS v2 =====
 const PIXEL = {
   canvas: null, ctx: null,
   anim: null, sceneIndex: 0, frame: 0,
   rotateTimer: null,
-  SCENES: ['steve', 'nyan', 'aqua'],
-  SCENE_DURATION: 20000, // ganti tiap 20 detik
+  fadeAlpha: 0, fading: false, nextScene: 0,
+  SCENES: ['steve', 'nyan', 'aqua', 'code', 'bakso', 'firework', 'goat'],
+  SCENE_DURATION: 18000,
 
   init() {
     this.canvas = el('pixelCanvas');
     if(!this.canvas) return;
     this.ctx = this.canvas.getContext('2d');
     this.resize();
+    if(this.rotateTimer) clearInterval(this.rotateTimer);
+    this.sceneIndex = 0; this.frame = 0; this.fading = false;
     this.startScene(0);
     this.rotateTimer = setInterval(() => {
-      this.sceneIndex = (this.sceneIndex + 1) % this.SCENES.length;
-      this.startScene(this.sceneIndex);
+      this.triggerFade((this.sceneIndex + 1) % this.SCENES.length);
     }, this.SCENE_DURATION);
   },
 
@@ -2702,99 +2704,202 @@ const PIXEL = {
     }
   },
 
+  // Fade-to-black transition — fix glitch
+  triggerFade(nextIdx) {
+    this.fading = true;
+    this.nextScene = nextIdx;
+    this.fadeAlpha = 0;
+    const fadeIn = () => {
+      this.fadeAlpha += 0.06;
+      if(this.fadeAlpha >= 1) {
+        // Fully black: stop old, start new
+        if(this.anim) cancelAnimationFrame(this.anim);
+        this.anim = null;
+        this.sceneIndex = nextIdx;
+        this.frame = 0;
+        this.fading = false;
+        this.fadeAlpha = 0;
+        this.startScene(nextIdx);
+        return;
+      }
+      // Draw black overlay on top of current frame
+      if(this.ctx && this.canvas) {
+        this.ctx.fillStyle = `rgba(0,0,0,${this.fadeAlpha})`;
+        this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height);
+      }
+      requestAnimationFrame(fadeIn);
+    };
+    requestAnimationFrame(fadeIn);
+  },
+
   startScene(idx) {
-    if(this.anim) cancelAnimationFrame(this.anim);
+    if(this.anim) { cancelAnimationFrame(this.anim); this.anim = null; }
     this.frame = 0;
     const name = this.SCENES[idx];
-    if(name === 'steve') this.runSteve();
-    else if(name === 'nyan') this.runNyan();
-    else if(name === 'aqua') this.runAqua();
+    if(name === 'steve')    this.runSteve();
+    else if(name === 'nyan')     this.runNyan();
+    else if(name === 'aqua')     this.runAqua();
+    else if(name === 'code')     this.runCode();
+    else if(name === 'bakso')    this.runBakso();
+    else if(name === 'firework') this.runFirework();
+    else if(name === 'goat')     this.runGoat();
   },
 
   // ── SCENE 1: Minecraft Steve ──
   runSteve() {
     const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
-    const S = 3; // pixel scale
-    const steveX = { val: -20 }; let dir = 1; let walkFrame = 0;
-    // Pixel art: Steve (10×16 pixels)
-    const STEVE = [
-      // head (row 0-7 = 8px, body 8-15 = 8px)
-      // Each row is array of [r,g,b,a] or null=transparent
-    ];
-    const SKY = [135,206,235], GRASS = [34,139,34], DIRT=[139,90,43], STONE=[128,128,128];
-    const STEVE_SKIN = [255,200,130], STEVE_HAIR=[80,50,20], STEVE_SHIRT=[50,100,200],
-          STEVE_PANTS=[50,50,150], STEVE_SHOE=[60,30,10];
+    const S = 3;
+    const SKY=[135,206,235], DIRT=[139,90,43], STONE=[128,128,128];
+    const SKIN=[255,200,130], HAIR=[80,50,20], SHIRT=[50,100,200], PANTS=[50,50,150], SHOE=[60,30,10];
+    const WOOD=[139,90,43], LEAVES=[34,120,34], BARK=[101,67,33];
 
-    // Draw pixel fn
-    const px = (x,y,color) => {
-      ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
-      ctx.fillRect(Math.floor(x)*S, Math.floor(y)*S, S, S);
+    const px = (x,y,col) => {
+      ctx.fillStyle=`rgb(${col[0]},${col[1]},${col[2]})`;
+      ctx.fillRect(Math.floor(x)*S,Math.floor(y)*S,S,S);
     };
 
+    // Tree state
+    const trees = [
+      {x:8, health:5, maxH:5, falling:false, fallAngle:0},
+      {x:28, health:5, maxH:5, falling:false, fallAngle:0},
+    ];
+    let choppingTree = -1; // index pohon yang lagi ditebang
+    let steveX = 5; let dir = 1;
+    let state = 'walk'; // 'walk' | 'chop' | 'celebrate'
+    let chopTimer = 0; let celebTimer = 0;
+    const gY = Math.floor(H/S)-4;
+
     const drawBg = () => {
-      // Sky
-      ctx.fillStyle = `rgb(${SKY[0]},${SKY[1]},${SKY[2]})`;
+      ctx.fillStyle=`rgb(${SKY[0]},${SKY[1]},${SKY[2]})`;
       ctx.fillRect(0,0,W,H);
       // Sun
       ctx.fillStyle='#FFD700';
-      for(let i=0;i<4;i++) for(let j=0;j<4;j++) ctx.fillRect((W-20)+i*S,2+j*S,S,S);
-      // Ground blocks
-      const gY = Math.floor(H/S)-4;
+      for(let i=0;i<4;i++) for(let j=0;j<4;j++) ctx.fillRect((W/S-6+i)*S,2+j*S,S,S);
+      // Ground
       for(let x=0;x<Math.ceil(W/S);x++) {
-        px(x, gY, GRASS); px(x, gY, [34,139,34]);
-        px(x, gY+1, DIRT); px(x, gY+2, DIRT); px(x, gY+3, STONE);
+        px(x,gY,[34,139,34]); px(x,gY+1,DIRT); px(x,gY+2,DIRT); px(x,gY+3,STONE);
       }
-      // Clouds (static)
-      ctx.fillStyle='rgba(255,255,255,0.9)';
-      [[4,2,6,2],[14,1,5,2]].forEach(([cx,cy,cw,ch])=>{
+      // Clouds
+      [[3,2,7,2],[18,1,6,2]].forEach(([cx,cy,cw,ch])=>{
+        ctx.fillStyle='rgba(255,255,255,0.9)';
         for(let i=0;i<cw;i++) for(let j=0;j<ch;j++) ctx.fillRect((cx+i)*S,(cy+j)*S,S,S);
       });
     };
 
-    const drawSteve = (sx, flip, wf) => {
-      const gY = Math.floor(H/S)-4;
-      const baseY = gY - 10; // 10 pixels tall
-      const x = Math.floor(sx/S);
-      const leg = wf%2===0;
-      const arm = wf%2!==0;
-      // HEAD 4x4
-      for(let i=0;i<4;i++) for(let j=0;j<4;j++) px(x+i,baseY+j,STEVE_SKIN);
-      // hair top
-      for(let i=0;i<4;i++) px(x+i,baseY,STEVE_HAIR);
-      for(let i=0;i<2;i++) px(x+i,baseY+1,STEVE_HAIR);
-      // eyes
+    const drawTree = (t) => {
+      if(t.health <= 0 && !t.falling) return;
+      ctx.save();
+      if(t.falling) {
+        ctx.translate((t.x+2)*S, gY*S);
+        ctx.rotate(t.fallAngle);
+        ctx.translate(-(t.x+2)*S, -gY*S);
+      }
+      const tH = Math.max(1, t.health);
+      // Trunk
+      for(let j=0;j<tH*2;j++) px(t.x+1,gY-1-j,BARK);
+      px(t.x+2,gY-1,WOOD); px(t.x+2,gY-2,WOOD);
+      // Leaves (only if healthy enough)
+      if(t.health > 1) {
+        for(let i=-1;i<4;i++) for(let j=0;j<3;j++) px(t.x+i,gY-tH*2-1+j,LEAVES);
+        for(let i=0;i<3;i++) px(t.x+i,gY-tH*2-3,LEAVES);
+      }
+      // Chop marks
+      const marks = t.maxH - t.health;
+      for(let m=0;m<marks;m++) px(t.x+1,gY-1-m*2,[200,80,30]);
+      ctx.restore();
+    };
+
+    const drawSteve = (sx, wf, chopping) => {
+      const baseY = gY-10, x=Math.floor(sx);
+      // Head
+      for(let i=0;i<4;i++) for(let j=0;j<4;j++) px(x+i,baseY+j,SKIN);
+      for(let i=0;i<4;i++) px(x+i,baseY,HAIR);
+      for(let i=0;i<2;i++) px(x+i,baseY+1,HAIR);
       px(x+1,baseY+2,[30,30,30]); px(x+2,baseY+2,[30,30,30]);
-      // BODY 4x5
-      for(let i=0;i<4;i++) for(let j=0;j<5;j++) px(x+i,baseY+4+j,STEVE_SHIRT);
-      // LEGS 2x3
-      px(x+1,baseY+9,STEVE_PANTS); px(x+2,baseY+9,STEVE_PANTS);
-      if(leg) {
-        px(x+1,baseY+10,STEVE_PANTS); px(x+1,baseY+11,STEVE_SHOE);
-        px(x+2,baseY+10,STEVE_PANTS); px(x+2,baseY+11,STEVE_SHOE);
+      // Body
+      for(let i=0;i<4;i++) for(let j=0;j<5;j++) px(x+i,baseY+4+j,SHIRT);
+      // Legs
+      const lw=wf%2===0;
+      if(lw){ px(x+1,baseY+9,PANTS); px(x+1,baseY+10,PANTS); px(x+1,baseY+11,SHOE); px(x+2,baseY+9,PANTS); px(x+2,baseY+10,PANTS); px(x+2,baseY+11,SHOE); }
+      else { px(x,baseY+9,PANTS); px(x,baseY+10,PANTS); px(x,baseY+11,SHOE); px(x+3,baseY+9,PANTS); px(x+3,baseY+10,PANTS); px(x+3,baseY+11,SHOE); }
+      // Arm with axe when chopping
+      if(chopping) {
+        const swing = Math.floor(this.frame/4)%2;
+        px(x+4,baseY+4+swing,SKIN); px(x+4,baseY+5+swing,SKIN);
+        // Axe
+        ctx.fillStyle='#888';
+        ctx.fillRect((x+5)*S,(baseY+3+swing)*S,S,2*S);
+        ctx.fillStyle=WOOD.map?`rgb(${WOOD[0]},${WOOD[1]},${WOOD[2]})`:'#8B5A2B';
+        ctx.fillRect((x+5)*S,(baseY+5)*S,S,3*S);
       } else {
-        px(x+0,baseY+10,STEVE_PANTS); px(x+0,baseY+11,STEVE_SHOE);
-        px(x+3,baseY+10,STEVE_PANTS); px(x+3,baseY+11,STEVE_SHOE);
+        px(x-1,baseY+5,SKIN); // arm hanging
       }
     };
 
-    let x = -20;
+    // Wood particles on chop
+    const particles = [];
+
     const tick = () => {
       ctx.clearRect(0,0,W,H);
       drawBg();
-      drawSteve(x, dir<0, Math.floor(this.frame/5));
-      x += dir * 1.5;
-      if(x > W+20) dir = -1;
-      if(x < -20) dir = 1;
-      this.frame++;
-      if(this.frame % 180 === 0) {
-        // Spawn block
-        const gY = Math.floor(H/S)-4;
-        for(let i=0;i<3;i++) for(let j=0;j<3;j++) {
-          this.ctx.fillStyle=['#8B4513','#808080','#228B22'][Math.floor(Math.random()*3)];
-          this.ctx.fillRect((Math.floor(x/S)+i)*S,(gY-3+j)*S,S,S);
+
+      // Draw trees
+      trees.forEach(t => {
+        if(t.falling) {
+          t.fallAngle += 0.08;
+          if(t.fallAngle > Math.PI/2) { t.health=0; t.falling=false; }
         }
+        drawTree(t);
+      });
+
+      // Particles
+      for(let i=particles.length-1;i>=0;i--) {
+        const p=particles[i];
+        p.x+=p.vx; p.y+=p.vy; p.vy+=0.2; p.life--;
+        ctx.fillStyle=`rgba(139,90,43,${p.life/15})`;
+        ctx.fillRect(p.x,p.y,3,3);
+        if(p.life<=0) particles.splice(i,1);
       }
-      this.anim = requestAnimationFrame(tick);
+
+      if(state==='walk') {
+        drawSteve(steveX,Math.floor(this.frame/5),false);
+        steveX += dir*1.2;
+        // Cek pohon di depan
+        const nearTree = trees.findIndex(t => t.health>0 && !t.falling && Math.abs(steveX-t.x*S)<10);
+        if(nearTree>=0) { state='chop'; choppingTree=nearTree; chopTimer=0; }
+        if(steveX>W-10) dir=-1;
+        if(steveX<2) dir=1;
+      } else if(state==='chop') {
+        const t=trees[choppingTree];
+        drawSteve(steveX,0,true);
+        chopTimer++;
+        // Chop sound effect (visual)
+        if(chopTimer%20===0) {
+          t.health--;
+          // Spawn particles
+          for(let p=0;p<5;p++) particles.push({x:t.x*S+6,y:(gY-2)*S,vx:(Math.random()-0.5)*3,vy:-Math.random()*3,life:15});
+          if(t.health<=0) {
+            t.falling=true; state='celebrate'; celebTimer=0; choppingTree=-1;
+          }
+        }
+        if(chopTimer>200 && t.health>0) { state='walk'; } // bosan
+      } else {
+        drawSteve(steveX,0,false);
+        celebTimer++;
+        // Jump celebrate
+        const jump = Math.abs(Math.sin(celebTimer*0.2))*4;
+        ctx.save();
+        ctx.translate(0,-jump);
+        drawSteve(steveX,0,false);
+        ctx.restore();
+        // Stars
+        ctx.font='10px sans-serif';
+        ctx.fillText('✦',steveX+10,(gY-15)*S);
+        if(celebTimer>80) { state='walk'; }
+      }
+
+      this.frame++;
+      this.anim=requestAnimationFrame(tick);
     };
     tick();
   },
@@ -2881,86 +2986,649 @@ const PIXEL = {
     tick();
   },
 
-  // ── SCENE 3: Pixel Aquarium ──
+  // ── SCENE 3: Pixel Aquarium + Shark ──
   runAqua() {
     const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
     const fishes = [
-      {x:20, y:H*0.3, dx:0.8, color:'#FF6B35', size:2, wig:0},
-      {x:80, y:H*0.6, dx:-0.6, color:'#4ECDC4', size:1.5, wig:1},
-      {x:50, y:H*0.5, dx:1.0, color:'#FFE66D', size:1, wig:2},
-      {x:110,y:H*0.4, dx:-0.7, color:'#A8E6CF', size:1.8, wig:1.5},
+      {x:20,  y:H*0.3, dx:0.8,  color:'#FF6B35', size:2,   wig:0},
+      {x:80,  y:H*0.6, dx:-0.6, color:'#4ECDC4', size:1.5, wig:1},
+      {x:50,  y:H*0.5, dx:1.0,  color:'#FFE66D', size:1,   wig:2},
+      {x:110, y:H*0.4, dx:-0.7, color:'#A8E6CF', size:1.8, wig:1.5},
     ];
+    // Shark
+    const shark = {x:-30, y:H*0.45, dx:0.9, state:'cruise', panicTimer:0};
     const bubbles = Array.from({length:8},(_,i)=>({x:20+i*18,y:H-5,speed:0.4+Math.random()*0.4}));
     const S=2;
+    let scatterTimer = 0;
 
-    const drawFish = (f, frame) => {
+    const drawFish = (f) => {
       const x=Math.floor(f.x), y=Math.floor(f.y);
-      const flip = f.dx < 0;
-      const tail = Math.sin(frame*0.15+f.wig)>0;
-      ctx.fillStyle = f.color;
-      const sc = f.size;
-      // body
-      for(let i=0;i<6;i++) for(let j=0;j<4;j++) {
+      const flip=f.dx<0;
+      const tail=Math.sin(this.frame*0.15+f.wig)>0;
+      ctx.fillStyle=f.color;
+      const sc=f.size;
+      for(let i=0;i<6;i++) for(let j=0;j<4;j++){
         if((i===0&&(j===0||j===3))||(i===5&&(j===0||j===3))) continue;
-        const bx = flip ? x+(5-i)*S*sc : x+i*S*sc;
-        ctx.fillRect(bx, y+j*S*sc, S*sc, S*sc);
+        const bx=flip?x+(5-i)*S*sc:x+i*S*sc;
+        ctx.fillRect(bx,y+j*S*sc,S*sc,S*sc);
       }
-      // tail
-      const tx = flip ? x+7*S*sc : x-2*S*sc;
-      if(tail){
-        ctx.fillRect(tx, y, S*sc, S*sc);
-        ctx.fillRect(tx, y+3*S*sc, S*sc, S*sc);
-      } else {
-        ctx.fillRect(tx, y+S*sc, S*sc, 2*S*sc);
-      }
-      // eye
+      const tx=flip?x+7*S*sc:x-2*S*sc;
+      if(tail){ctx.fillRect(tx,y,S*sc,S*sc);ctx.fillRect(tx,y+3*S*sc,S*sc,S*sc);}
+      else {ctx.fillRect(tx,y+S*sc,S*sc,2*S*sc);}
       ctx.fillStyle='#000';
-      const ex = flip ? x+S*sc : x+4*S*sc;
-      ctx.fillRect(ex, y+S*sc, S*sc, S*sc);
+      const ex=flip?x+S*sc:x+4*S*sc;
+      ctx.fillRect(ex,y+S*sc,S*sc,S*sc);
+    };
+
+    const drawShark = (s) => {
+      const x=Math.floor(s.x), y=Math.floor(s.y);
+      const flip=s.dx<0;
+      const sc=3;
+      // Body — grey
+      ctx.fillStyle='#708090';
+      for(let i=0;i<14;i++) for(let j=2;j<7;j++){
+        if(i===0&&(j<3||j>5)) continue;
+        if(i===13&&(j<3||j>5)) continue;
+        const bx=flip?x+(13-i)*S*sc:x+i*S*sc;
+        ctx.fillRect(bx,y+j*S*sc,S*sc,S*sc);
+      }
+      // Belly white
+      ctx.fillStyle='#E8E8E8';
+      for(let i=2;i<12;i++) {
+        const bx=flip?x+(13-i)*S*sc:x+i*S*sc;
+        ctx.fillRect(bx,y+5*S*sc,S*sc,S*sc);
+        ctx.fillRect(bx,y+6*S*sc,S*sc,S*sc);
+      }
+      // Dorsal fin
+      ctx.fillStyle='#607080';
+      for(let j=0;j<3;j++){
+        const fw=3-j;
+        for(let i=0;i<fw;i++){
+          const bx=flip?x+(8+j-i)*S*sc:x+(5+j+i)*S*sc;
+          ctx.fillRect(bx,y+j*S*sc,S*sc,S*sc);
+        }
+      }
+      // Tail
+      ctx.fillStyle='#708090';
+      const tx=flip?x+14*S*sc:x-2*S*sc;
+      ctx.fillRect(tx,y,S*sc*2,S*sc*2);
+      ctx.fillRect(tx,y+5*S*sc,S*sc*2,S*sc*2);
+      // Eye
+      ctx.fillStyle='#000';
+      const ex=flip?x+10*S*sc:x+3*S*sc;
+      ctx.fillRect(ex,y+2*S*sc,S*sc,S*sc);
+      // Teeth
+      ctx.fillStyle='#FFF';
+      const mouthX=flip?x:x+11*S*sc;
+      for(let t2=0;t2<3;t2++) ctx.fillRect(mouthX+(flip?-t2*S:t2*S)*sc,y+3*S*sc,S,S*sc);
     };
 
     const tick = () => {
-      // Water bg gradient
-      const grad = ctx.createLinearGradient(0,0,0,H);
-      grad.addColorStop(0,'#0077be');
-      grad.addColorStop(1,'#003d6b');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0,0,W,H);
-
-      // Seabed
-      ctx.fillStyle='#c2a46e';
-      ctx.fillRect(0,H-8,W,8);
-      // Seaweed
-      [15,40,70,100,130].forEach(sx => {
+      const grad=ctx.createLinearGradient(0,0,0,H);
+      grad.addColorStop(0,'#0077be'); grad.addColorStop(1,'#003d6b');
+      ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#c2a46e'; ctx.fillRect(0,H-8,W,8);
+      [15,40,70,100,130].forEach(sx=>{
         ctx.fillStyle='#2d8a2d';
         const h2=10+Math.sin(this.frame*0.05+sx)*3;
         for(let i=0;i<h2;i++) ctx.fillRect(sx+(Math.sin(i*0.5+this.frame*0.03)*3|0),H-8-i,3,1);
       });
+      bubbles.forEach(b=>{
+        b.y-=b.speed; if(b.y<0) b.y=H-5;
+        ctx.strokeStyle=`rgba(255,255,255,${0.3+Math.sin(this.frame*0.1+b.x)*0.2})`;
+        ctx.lineWidth=1; ctx.beginPath(); ctx.arc(b.x+(Math.sin(this.frame*0.02+b.x)*3),b.y,2,0,Math.PI*2); ctx.stroke();
+      });
 
-      // Bubbles
-      bubbles.forEach(b => {
-        b.y -= b.speed;
-        if(b.y < 0) b.y = H - 5;
-        const alpha = 0.3 + Math.sin(this.frame*0.1+b.x)*0.2;
-        ctx.strokeStyle=`rgba(255,255,255,${alpha})`;
-        ctx.lineWidth=1;
+      // Shark movement
+      shark.x += shark.dx;
+      shark.y += Math.sin(this.frame*0.02)*0.5;
+      if(shark.x > W+60) shark.x=-60;
+      if(shark.x < -60) shark.x=W+60;
+
+      // When shark is near, fish scatter!
+      scatterTimer++;
+      const sharkMid = shark.x + 20;
+      const sharkNear = fishes.some(f=>Math.abs(f.x-sharkMid)<40);
+      if(sharkNear) {
+        fishes.forEach(f=>{
+          f.dx = f.x < sharkMid ? -2.5 : 2.5;
+          f.y -= 1.5; // swim up fast
+        });
+        // Panic bubbles
+        if(scatterTimer%5===0) {
+          ctx.fillStyle='#FFF'; ctx.font='8px sans-serif';
+          ctx.fillText('!',sharkMid,shark.y-10);
+        }
+      } else {
+        // Slowly return to normal speed
+        fishes.forEach(f=>{
+          if(Math.abs(f.dx)>1) f.dx=f.dx>0?Math.max(f.dx-0.05,0.7):Math.min(f.dx+0.05,-0.6);
+        });
+      }
+
+      // Draw fish (behind shark)
+      fishes.forEach(f=>{
+        drawFish(f);
+        f.x+=f.dx;
+        f.y+=Math.sin(this.frame*0.03+f.wig)*0.3;
+        if(f.x>W+20) f.x=-20;
+        if(f.x<-20) f.x=W+20;
+        f.y=Math.max(10,Math.min(H-20,f.y));
+      });
+
+      drawShark(shark);
+
+      // Fin visible at top when shark near surface
+      if(shark.y < H*0.3) {
+        ctx.fillStyle='#607080';
         ctx.beginPath();
-        ctx.arc(b.x+(Math.sin(this.frame*0.02+b.x)*3),b.y,2,0,Math.PI*2);
-        ctx.stroke();
-      });
+        ctx.moveTo(shark.x+20,shark.y-8);
+        ctx.lineTo(shark.x+28,shark.y+2);
+        ctx.lineTo(shark.x+14,shark.y+2);
+        ctx.fill();
+      }
 
-      // Fish
-      fishes.forEach(f => {
-        drawFish(f, this.frame);
-        f.x += f.dx;
-        f.y += Math.sin(this.frame*0.03+f.wig)*0.3;
-        if(f.x > W+20) f.x = -20;
-        if(f.x < -20) f.x = W+20;
-        f.y = Math.max(10, Math.min(H-20, f.y));
+      this.frame++;
+      this.anim=requestAnimationFrame(tick);
+    };
+    tick();
+  },
+
+  // ── SCENE 4: Claude Code — logo duduk ngoding ──
+  runCode() {
+    const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
+    // Code lines typing on screen
+    const LINES = [
+      {text:'const life = new', color:'#4ECDC4'},
+      {text:'  LifeHub({', color:'#FFF'},
+      {text:'  name: "Azhar",', color:'#FF6584'},
+      {text:'  habits: true,', color:'#43E97B'},
+      {text:'  streak: Infinity', color:'#FFE44D'},
+      {text:'});', color:'#FFF'},
+      {text:'// ✓ All tests pass', color:'#43E97B'},
+    ];
+    let typedLines=[]; let curLine=0; let curChar=0;
+
+    // Claude logo colors (orange/coral gradient circles)
+    const drawClaudeLogo = (cx, cy, r) => {
+      // Outer circle - coral/orange gradient
+      const grad = ctx.createRadialGradient(cx,cy,r*0.2,cx,cy,r);
+      grad.addColorStop(0,'#FF8C69');
+      grad.addColorStop(0.5,'#FF6B35');
+      grad.addColorStop(1,'#E8521A');
+      ctx.fillStyle=grad;
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+      // Inner white circle
+      ctx.fillStyle='#FFF5F0';
+      ctx.beginPath(); ctx.arc(cx,cy,r*0.55,0,Math.PI*2); ctx.fill();
+      // Claude "C" shape (the arc/spiral motif)
+      ctx.strokeStyle='#FF6B35';
+      ctx.lineWidth=r*0.22;
+      ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.arc(cx,cy,r*0.3,Math.PI*0.3,Math.PI*2.1);
+      ctx.stroke();
+    };
+
+    // Seated figure dimensions
+    const figX = W*0.68, figY = H*0.82;
+    const deskY = H*0.72;
+
+    const drawDesk = () => {
+      // Desk
+      ctx.fillStyle='#5D3A1A';
+      ctx.fillRect(figX-30, deskY, 70, 5);
+      ctx.fillRect(figX-28, deskY+5, 6, H-deskY-5);
+      ctx.fillRect(figX+30, deskY+5, 6, H-deskY-5);
+      // Monitor
+      ctx.fillStyle='#222';
+      ctx.fillRect(figX-18, deskY-40, 45, 32);
+      ctx.fillStyle='#0d1117';
+      ctx.fillRect(figX-16, deskY-38, 41, 28);
+      // Monitor stand
+      ctx.fillStyle='#333';
+      ctx.fillRect(figX+2, deskY-8, 5, 8);
+      ctx.fillRect(figX-4, deskY, 18, 3);
+      // Keyboard
+      ctx.fillStyle='#444';
+      ctx.fillRect(figX-22, deskY+1, 40, 6);
+      for(let i=0;i<8;i++) for(let j=0;j<2;j++) {
+        ctx.fillStyle='#555';
+        ctx.fillRect(figX-20+i*5, deskY+2+j*2, 4, 1);
+      }
+      // Coffee cup
+      ctx.fillStyle='#795548';
+      ctx.fillRect(figX+35, deskY-8, 8, 10);
+      ctx.fillStyle='#4E342E';
+      ctx.fillRect(figX+36, deskY-6, 6, 4);
+      ctx.fillStyle='rgba(255,255,255,0.4)';
+      if(Math.floor(this.frame/20)%2===0) ctx.fillRect(figX+38, deskY-12, 2, 5);
+    };
+
+    const drawClaudeSeated = () => {
+      // Body (sitting) - simple rounded shape
+      ctx.fillStyle='#FF6B35';
+      // Torso
+      ctx.beginPath();
+      ctx.ellipse(figX, figY-18, 14, 18, 0, 0, Math.PI*2);
+      ctx.fill();
+      // Head = Claude logo
+      drawClaudeLogo(figX, figY-38, 13);
+      // Arms reaching to keyboard
+      ctx.fillStyle='#FF6B35';
+      ctx.lineWidth=6; ctx.strokeStyle='#FF6B35'; ctx.lineCap='round';
+      // Left arm
+      ctx.beginPath();
+      ctx.moveTo(figX-12,figY-20);
+      ctx.quadraticCurveTo(figX-20,figY-5,figX-15,deskY+3);
+      ctx.stroke();
+      // Right arm
+      ctx.beginPath();
+      ctx.moveTo(figX+12,figY-20);
+      ctx.quadraticCurveTo(figX+20,figY-5,figX+10,deskY+3);
+      ctx.stroke();
+      // Hands on keyboard
+      ctx.fillStyle='#FF9870';
+      ctx.beginPath(); ctx.arc(figX-15,deskY+3,4,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(figX+10,deskY+3,4,0,Math.PI*2); ctx.fill();
+      // Legs (sitting, bent)
+      ctx.lineWidth=8;
+      ctx.beginPath(); ctx.moveTo(figX-8,figY-2); ctx.lineTo(figX-10,figY+8); ctx.lineTo(figX,figY+8); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(figX+8,figY-2); ctx.lineTo(figX+10,figY+8); ctx.lineTo(figX+2,figY+8); ctx.stroke();
+      // Feet
+      ctx.fillStyle='#c0392b';
+      ctx.fillRect(figX-2,figY+6,10,5);
+      ctx.fillRect(figX-12,figY+6,10,5);
+      // Thinking bubble (coding focus)
+      if(Math.floor(this.frame/30)%3!==2) {
+        ctx.fillStyle='rgba(255,255,255,0.85)';
+        ctx.beginPath(); ctx.arc(figX+22,figY-55,10,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(figX+18,figY-43,4,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(figX+15,figY-38,2.5,0,Math.PI*2); ctx.fill();
+        // Code symbol in bubble
+        ctx.fillStyle='#FF6B35';
+        ctx.font='bold 8px monospace';
+        ctx.fillText('</>',figX+16,figY-52);
+      }
+    };
+
+    const tick = () => {
+      // Dark room bg
+      ctx.fillStyle='#0d1117'; ctx.fillRect(0,0,W,H);
+      // Room floor
+      ctx.fillStyle='#1a1a2e'; ctx.fillRect(0,H*0.85,W,H);
+      // Ambient glow from monitor
+      const glow=ctx.createRadialGradient(figX+5,deskY-24,0,figX+5,deskY-24,60);
+      glow.addColorStop(0,'rgba(67,233,123,0.08)');
+      glow.addColorStop(1,'transparent');
+      ctx.fillStyle=glow; ctx.fillRect(0,0,W,H);
+
+      drawDesk();
+      drawClaudeSeated();
+
+      // Code on monitor — typing effect
+      if(this.frame%4===0) {
+        if(curLine<LINES.length) {
+          if(!typedLines[curLine]) typedLines[curLine]={text:'',color:LINES[curLine].color};
+          if(curChar<LINES[curLine].text.length) {
+            typedLines[curLine].text+=LINES[curLine].text[curChar]; curChar++;
+          } else { curLine++; curChar=0; }
+        } else if(this.frame%200===0) { typedLines=[]; curLine=0; curChar=0; }
+      }
+      ctx.font='5.5px monospace';
+      typedLines.forEach((l,i)=>{
+        if(!l) return;
+        ctx.fillStyle=l.color||'#FFF';
+        ctx.fillText(l.text, figX-14, deskY-34+i*5);
       });
+      // Cursor blink on monitor
+      if(Math.floor(this.frame/15)%2===0 && curLine<LINES.length) {
+        const cursorX=figX-14+(typedLines[curLine]?.text?.length||0)*3.3;
+        ctx.fillStyle='#43E97B';
+        ctx.fillRect(cursorX,deskY-38+curLine*5,2,5);
+      }
+
+      // Particle: typing sparks
+      if(this.frame%8===0) {
+        ctx.fillStyle=`rgba(67,233,123,${0.3+Math.random()*0.4})`;
+        ctx.fillRect(figX-15+Math.random()*25, deskY+1+Math.random()*4, 2, 2);
+      }
+
+      this.frame++;
+      this.anim=requestAnimationFrame(tick);
+    };
+    tick();
+  },
+
+  // ── SCENE 5: Orang beli bakso ──
+  runBakso() {
+    const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
+    const S = 2;
+    let buyerX = W + 10; let sellerX = W * 0.55;
+    let state = 'walk'; // walk → order → eat
+    let stateTimer = 0; let bowlAlpha = 0;
+    let steamOffset = 0;
+
+    const gY = H - 16;
+    const pal = {
+      skin:'#FFCC99', hair:'#3D2B1F', shirt1:'#FF6584', shirt2:'#4ECDC4',
+      pants:'#2C3E50', road:'#555', sidewalk:'#888', cart:'#8B4513',
+      cartTop:'#FF0000', bowl:'#EFEFEF', broth:'#F4A460', bakso:'#8B0000',
+      umbrella:'#FF4444', steam:'rgba(255,255,255,0.6)'
+    };
+
+    const drawPerson = (x, shirtColor, facing, action) => {
+      const bx = Math.floor(x);
+      // Head
+      ctx.fillStyle = pal.skin;
+      for(let i=0;i<4;i++) for(let j=0;j<4;j++) ctx.fillRect((bx+i)*S,(gY-10)*S,S,S);
+      // Hair
+      ctx.fillStyle = pal.hair;
+      for(let i=0;i<4;i++) ctx.fillRect((bx+i)*S,(gY-10)*S,S,S);
+      // Body
+      ctx.fillStyle = shirtColor;
+      for(let i=0;i<4;i++) for(let j=0;j<5;j++) ctx.fillRect((bx+i)*S,(gY-6)*S,S,S);
+      // Pants
+      ctx.fillStyle = pal.pants;
+      for(let i=0;i<4;i++) for(let j=0;j<3;j++) ctx.fillRect((bx+i)*S,(gY-1)*S,S,S);
+      // Legs walk anim
+      const lw = Math.floor(this.frame/6)%2;
+      ctx.fillStyle = pal.pants;
+      if(action==='walk') {
+        ctx.fillRect((bx+(lw?0:3))*S, gY*S, S, 2*S);
+        ctx.fillRect((bx+(lw?3:0))*S, (gY+1)*S, S, S);
+      } else {
+        ctx.fillRect((bx+1)*S, gY*S, S, 2*S);
+        ctx.fillRect((bx+2)*S, gY*S, S, 2*S);
+      }
+      // Arm with bowl if eating
+      if(action==='eat') {
+        ctx.fillStyle = pal.skin;
+        ctx.fillRect((bx-1)*S,(gY-4)*S,S,3*S);
+        ctx.fillStyle = pal.bowl;
+        ctx.fillRect((bx-2)*S,(gY-5)*S,3*S,S);
+        ctx.fillStyle = pal.broth;
+        ctx.fillRect((bx-2)*S,(gY-4)*S,3*S,S);
+        // Bakso balls
+        [[0,-4],[1,-3]].forEach(([bi,bj]) => {
+          ctx.fillStyle = pal.bakso;
+          ctx.fillRect((bx-2+bi)*S,(gY+bj)*S,S,S);
+        });
+      }
+    };
+
+    const drawCart = (x) => {
+      const cx2 = Math.floor(x);
+      // Wheels
+      ctx.fillStyle='#333';
+      ctx.beginPath(); ctx.arc((cx2+2)*S,(gY+2)*S,4,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc((cx2+8)*S,(gY+2)*S,4,0,Math.PI*2); ctx.fill();
+      // Cart body
+      ctx.fillStyle=pal.cart;
+      for(let i=0;i<10;i++) for(let j=0;j<5;j++) ctx.fillRect((cx2+i)*S,(gY-5)*S,S,S);
+      // Cart top
+      ctx.fillStyle=pal.cartTop;
+      for(let i=0;i<10;i++) ctx.fillRect((cx2+i)*S,(gY-6)*S,S,S);
+      // Umbrella
+      ctx.fillStyle=pal.umbrella;
+      for(let i=0;i<12;i++) ctx.fillRect((cx2-1+i)*S,(gY-14)*S,S,S);
+      for(let i=2;i<10;i++) ctx.fillRect((cx2+i)*S,(gY-13)*S,S,S);
+      ctx.fillStyle='#8B4513';
+      ctx.fillRect((cx2+5)*S,(gY-13)*S,S,8*S);
+      // Steam from pot
+      steamOffset = (steamOffset+0.15)%1;
+      for(let s=0;s<3;s++) {
+        ctx.fillStyle=pal.steam;
+        const sy = (gY-7-s*2-(steamOffset*4)|0);
+        ctx.fillRect((cx2+3+s)*S, sy*S, S, S);
+      }
+      // Sign "BAKSO"
+      ctx.fillStyle='#FFF'; ctx.font = `bold ${S*3}px sans-serif`;
+      ctx.fillText('BAKSO', (cx2+1)*S, (gY-7)*S);
+      // Bowl display
+      ctx.fillStyle=pal.bowl; ctx.fillRect((cx2+2)*S,(gY-4)*S,3*S,2*S);
+      ctx.fillStyle=pal.broth; ctx.fillRect((cx2+2)*S,(gY-3)*S,3*S,S);
+      ctx.fillStyle=pal.bakso; ctx.fillRect((cx2+3)*S,(gY-4)*S,S,S);
+    };
+
+    const tick = () => {
+      // Sky bg
+      ctx.fillStyle='#87CEEB'; ctx.fillRect(0,0,W,H);
+      // Ground
+      ctx.fillStyle=pal.road; ctx.fillRect(0,H-12,W,12);
+      ctx.fillStyle=pal.sidewalk; ctx.fillRect(0,H-16,W,4);
+      // Road markings
+      ctx.fillStyle='#FFD700';
+      for(let i=0;i<W;i+=20) ctx.fillRect(i+(this.frame%20),H-7,10,2);
+
+      drawCart(sellerX);
+      // Seller (standing behind cart)
+      drawPerson(sellerX+3, pal.shirt2, 1, 'stand');
+
+      stateTimer++;
+      if(state==='walk') {
+        buyerX -= 1.5;
+        drawPerson(Math.floor(buyerX/S), pal.shirt1, -1, 'walk');
+        if(buyerX <= sellerX*S - 30) { state='order'; stateTimer=0; }
+      } else if(state==='order') {
+        drawPerson(Math.floor(buyerX/S), pal.shirt1, -1, 'stand');
+        // Speech bubble
+        if(stateTimer < 90) {
+          ctx.fillStyle='white'; ctx.fillRect(buyerX-30,H-50,50,18);
+          ctx.fillStyle='#333'; ctx.font='7px sans-serif';
+          ctx.fillText('1 porsi kak!', buyerX-26,H-38);
+        }
+        if(stateTimer > 100) { state='eat'; stateTimer=0; }
+      } else {
+        drawPerson(Math.floor(buyerX/S), pal.shirt1, -1, 'eat');
+        // Happy particles
+        if(stateTimer%20===0) {
+          ctx.fillStyle='#FFD700'; ctx.font='10px sans-serif';
+          ctx.fillText('😋', buyerX-10, H-45);
+        }
+        if(stateTimer > 150) { state='walk'; buyerX=W+10; stateTimer=0; }
+      }
 
       this.frame++;
       this.anim = requestAnimationFrame(tick);
+    };
+    tick();
+  },
+
+  // ── SCENE 6: Kembang api + "Hai Azhar" ──
+  runFirework() {
+    const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
+    const particles = [];
+    const COLORS = ['#FF6B6B','#FFE44D','#43E97B','#4ECDC4','#6C63FF','#FF6584','#FFD700','#FF4500'];
+    let textAlpha = 0; let textDir = 1;
+
+    const launch = () => {
+      const x = 15 + Math.random()*(W-30);
+      const y = 10 + Math.random()*(H*0.5);
+      const color = COLORS[Math.floor(Math.random()*COLORS.length)];
+      const count = 18 + Math.floor(Math.random()*14);
+      for(let i=0;i<count;i++) {
+        const angle = (i/count)*Math.PI*2;
+        const speed = 1.2 + Math.random()*2;
+        particles.push({
+          x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+          alpha:1, color, size: 2+Math.random()*2, trail:[]
+        });
+      }
+      // Rocket trail
+      particles.push({x, y:H, vx:0, vy:-(y/20), alpha:1, color:'#FFF', size:2, rocket:true, targetY:y, trail:[]});
+    };
+
+    if(particles.length===0) { launch(); launch(); }
+
+    const tick = () => {
+      // Night sky
+      ctx.fillStyle='rgba(5,5,20,0.25)';
+      ctx.fillRect(0,0,W,H);
+
+      // Stars
+      ctx.fillStyle='rgba(255,255,255,0.6)';
+      [12,28,55,80,110,140,18,65,95,130].forEach((sx,i) => {
+        const sy=[8,20,5,30,12,25,35,15,28,8][i];
+        const tw=Math.sin(this.frame*0.08+i)*0.5+0.5;
+        ctx.globalAlpha=tw*0.8;
+        ctx.fillRect(sx,sy,1,1);
+      });
+      ctx.globalAlpha=1;
+
+      // Update particles
+      for(let i=particles.length-1;i>=0;i--) {
+        const p=particles[i];
+        if(p.rocket) {
+          p.trail.push({x:p.x,y:p.y,a:1});
+          p.y += p.vy;
+          p.trail.forEach(t=>t.a-=0.1);
+          p.trail = p.trail.filter(t=>t.a>0);
+          p.trail.forEach(t=>{ctx.globalAlpha=t.a*0.4;ctx.fillStyle='#FFA500';ctx.fillRect(t.x,t.y,2,2);});
+          ctx.globalAlpha=1;
+          ctx.fillStyle=p.color; ctx.fillRect(p.x,p.y,p.size,p.size);
+          if(p.y<=p.targetY) { particles.splice(i,1); }
+          continue;
+        }
+        p.trail.push({x:p.x,y:p.y,a:p.alpha});
+        p.x+=p.vx; p.y+=p.vy; p.vy+=0.04; p.alpha-=0.016;
+        p.trail.forEach(t=>{ctx.globalAlpha=t.a*0.3;ctx.fillStyle=p.color;ctx.fillRect(t.x,t.y,1,1);});
+        ctx.globalAlpha=p.alpha;
+        ctx.fillStyle=p.color; ctx.fillRect(p.x,p.y,p.size,p.size);
+        ctx.globalAlpha=1;
+        if(p.alpha<=0) particles.splice(i,1);
+      }
+      ctx.globalAlpha=1;
+
+      // Launch new fireworks periodically
+      if(this.frame%45===0) launch();
+      if(this.frame%70===0) launch();
+
+      // "Hai Azhar" text pulse
+      textAlpha += textDir*0.03;
+      if(textAlpha>=1){textAlpha=1;textDir=-1;}
+      if(textAlpha<=0.3){textAlpha=0.3;textDir=1;}
+      ctx.save();
+      ctx.globalAlpha=textAlpha;
+      ctx.font=`bold ${Math.floor(H*0.2)}px 'Poppins',sans-serif`;
+      ctx.textAlign='center';
+      // Gradient text
+      const grad=ctx.createLinearGradient(0,H*0.55,W,H*0.75);
+      grad.addColorStop(0,'#FFD700');
+      grad.addColorStop(0.5,'#FF6584');
+      grad.addColorStop(1,'#6C63FF');
+      ctx.fillStyle=grad;
+      ctx.shadowColor='rgba(255,200,0,0.8)';
+      ctx.shadowBlur=10;
+      ctx.fillText('Hai Azhar!',W/2,H*0.68);
+      ctx.restore();
+
+      this.frame++;
+      this.anim=requestAnimationFrame(tick);
+    };
+    tick();
+  },
+
+  // ── SCENE 7: Kambing pakai kacamata hitam ──
+  runGoat() {
+    const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
+    const S = 2;
+    const gY = Math.floor(H/S) - 6;
+    let goatX = W/2/S - 8;
+    let bounce = 0; let bobDir = 1;
+    // Cool background rotation
+    let bgHue = 0;
+
+    const drawGoat = (x, bob) => {
+      const bx = Math.floor(x), by = gY + bob;
+      // Body (white/cream)
+      ctx.fillStyle='#F5F5F0';
+      for(let i=0;i<10;i++) for(let j=0;j<6;j++) ctx.fillRect((bx+i)*S,(by-6+j)*S,S,S);
+      // Head
+      for(let i=1;i<7;i++) for(let j=0;j<5;j++) ctx.fillRect((bx+i)*S,(by-11+j)*S,S,S);
+      // Snout
+      ctx.fillStyle='#FFD5C0';
+      for(let i=2;i<6;i++) for(let j=0;j<2;j++) ctx.fillRect((bx+i)*S,(by-7+j)*S,S,S);
+      ctx.fillStyle='#333'; ctx.fillRect((bx+3)*S,(by-7)*S,S,S); ctx.fillRect((bx+4)*S,(by-7)*S,S,S);
+      // Horns (cool curved)
+      ctx.fillStyle='#C8A882';
+      ctx.fillRect((bx+2)*S,(by-14)*S,S,3*S); ctx.fillRect((bx+1)*S,(by-15)*S,S,S);
+      ctx.fillRect((bx+5)*S,(by-14)*S,S,3*S); ctx.fillRect((bx+6)*S,(by-15)*S,S,S);
+      // Ears
+      ctx.fillStyle='#FFD5C0';
+      ctx.fillRect((bx+1)*S,(by-12)*S,2*S,2*S); ctx.fillRect((bx+6)*S,(by-12)*S,2*S,2*S);
+      // SUNGLASSES (the drip 😎)
+      ctx.fillStyle='#111';
+      // left lens
+      for(let i=1;i<4;i++) for(let j=0;j<2;j++) ctx.fillRect((bx+i)*S,(by-10+j)*S,S,S);
+      // right lens
+      for(let i=4;i<7;i++) for(let j=0;j<2;j++) ctx.fillRect((bx+i)*S,(by-10+j)*S,S,S);
+      // bridge
+      ctx.fillStyle='#555'; ctx.fillRect((bx+4)*S,(by-9)*S,S,S);
+      // frame arms
+      ctx.fillRect((bx)*S,(by-9)*S,S,S); ctx.fillRect((bx+7)*S,(by-9)*S,S,S);
+      // Lens shine
+      ctx.fillStyle='rgba(255,255,255,0.4)';
+      ctx.fillRect((bx+1)*S,(by-10)*S,S,S); ctx.fillRect((bx+4)*S,(by-10)*S,S,S);
+      // Legs
+      ctx.fillStyle='#E0E0D8';
+      const lw=Math.floor(this.frame/8)%2;
+      [[0,0],[2,0],[5,0],[8,0]].forEach(([li,lj],idx) => {
+        const off=(idx%2===0&&lw)?1:0;
+        ctx.fillRect((bx+li)*S,(by+off)*S,2*S,5*S);
+        ctx.fillStyle='#333'; ctx.fillRect((bx+li)*S,(by+4+off)*S,2*S,S);
+        ctx.fillStyle='#E0E0D8';
+      });
+      // Beard
+      ctx.fillStyle='#DDD';
+      ctx.fillRect((bx+3)*S,(by-6)*S,2*S,2*S);
+      // Tail
+      ctx.fillStyle='#F5F5F0';
+      ctx.fillRect((bx+10)*S,(by-5)*S,2*S,2*S);
+    };
+
+    const tick = () => {
+      // Groovy background
+      bgHue = (bgHue+0.5)%360;
+      const grad=ctx.createLinearGradient(0,0,W,H);
+      grad.addColorStop(0,`hsl(${bgHue},60%,40%)`);
+      grad.addColorStop(0.5,`hsl(${(bgHue+60)%360},70%,35%)`);
+      grad.addColorStop(1,`hsl(${(bgHue+120)%360},60%,40%)`);
+      ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+
+      // Disco floor
+      const floorY = (gY+1)*S;
+      for(let i=0;i<Math.ceil(W/16);i++) {
+        ctx.fillStyle=`hsl(${(bgHue+i*30)%360},80%,50%)`;
+        ctx.fillRect(i*16,floorY,8,H-floorY);
+        ctx.fillStyle=`hsl(${(bgHue+i*30+15)%360},70%,40%)`;
+        ctx.fillRect(i*16+8,floorY,8,H-floorY);
+      }
+
+      // Stars/sparkles
+      for(let i=0;i<5;i++) {
+        ctx.fillStyle=`rgba(255,255,255,${0.3+Math.sin(this.frame*0.2+i)*0.3})`;
+        ctx.font='8px sans-serif';
+        ctx.fillText('✦',[20,50,90,130,160][i],[10,20,15,8,22][i]);
+      }
+
+      // Goat bob
+      bounce += bobDir*0.15;
+      if(bounce>1.5||bounce<0) bobDir*=-1;
+
+      drawGoat(goatX, Math.floor(bounce));
+
+      // Cool text "SWAG"
+      ctx.save();
+      ctx.font=`bold 8px sans-serif`;
+      ctx.fillStyle=`hsl(${(bgHue+180)%360},100%,75%)`;
+      ctx.textAlign='center';
+      ctx.shadowColor='white'; ctx.shadowBlur=4;
+      ctx.fillText('😎 SWAG 😎', W/2, floorY-4);
+      ctx.restore();
+
+      this.frame++;
+      this.anim=requestAnimationFrame(tick);
     };
     tick();
   },
