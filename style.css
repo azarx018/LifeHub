@@ -809,26 +809,20 @@ textarea.input-field{resize:vertical;min-height:90px}
 .streak-legend-box{width:11px;height:11px;border-radius:2px;flex-shrink:0}
 
 /* Scroll container — months dan grid scroll bersama */
-.habit-streak-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
-.habit-streak-inner{display:inline-flex;flex-direction:column;gap:3px;padding-bottom:2px}
-
-/* Month labels — width = cell(13) + gap(2) = 15px per kolom */
-.habit-streak-months{display:flex;gap:0;padding-left:30px;margin-bottom:1px}
-.streak-month-label{
-  width:15px;font-size:.6rem;color:var(--text3);
-  overflow:visible;white-space:nowrap;flex-shrink:0;
-}
-
-/* Grid row */
-.habit-streak-grid-wrap{display:flex;gap:4px;align-items:flex-start}
+.habit-streak-scroll{overflow-x:hidden;padding-bottom:4px;width:100%}
+.habit-streak-inner{display:flex;flex-direction:column;gap:3px;padding-bottom:2px;width:100%}
+.habit-streak-months{display:flex;gap:0;padding-left:30px;margin-bottom:1px;width:100%}
+.streak-month-label{flex:1;font-size:.6rem;color:var(--text3);overflow:visible;white-space:nowrap;min-width:0}
+.habit-streak-grid-wrap{display:flex;gap:4px;align-items:flex-start;width:100%}
 .habit-streak-days-label{display:flex;flex-direction:column;gap:2px;flex-shrink:0}
 .habit-streak-days-label span{height:13px;width:26px;font-size:.58rem;color:var(--text3);line-height:13px;text-align:right}
-.habit-streak-grid{display:flex;gap:2px;align-items:flex-start}
-.streak-week-col{display:flex;flex-direction:column;gap:2px}
+.habit-streak-grid{display:flex;gap:2px;align-items:flex-start;flex:1;min-width:0}
+.streak-week-col{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
 .streak-cell{
-  width:13px;height:13px;border-radius:2px;
+  width:100%;aspect-ratio:1 / 1;border-radius:2px;
   cursor:pointer;flex-shrink:0;
   transition:transform .12s ease;
+  min-width:8px;
 }
 .streak-cell:active{transform:scale(1.3)}
 @media(hover:hover){.streak-cell:hover{transform:scale(1.4);z-index:10;position:relative}}
@@ -893,4 +887,19 @@ textarea.input-field{resize:vertical;min-height:90px}
 .activity-week-label{
   font-size:.88rem;font-weight:600;color:var(--text);
   text-align:center;flex:1;
+}
+
+/* ===== PIXEL ART CARD ===== */
+.pixel-card{
+  grid-column:span 1;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;padding:6px;
+  background:var(--bg3);
+  min-height:90px;
+}
+#pixelCanvas{
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
+  width:100%;height:100%;
+  display:block;
 }

@@ -758,7 +758,10 @@ function navigateTo(page) {
   S.currentPage = page;
   closeSidebar();
   switch(page) {
-    case 'dashboard': renderDashboard(); break;
+    case 'dashboard':
+      renderDashboard();
+      setTimeout(() => { if(el('pixelCanvas') && !PIXEL.anim) PIXEL.init(); }, 100);
+      break;
     case 'todo': renderTodos(); break;
     case 'habit': renderHabits(); break;
     case 'journal':
@@ -2195,8 +2198,12 @@ async function init() {
   setTimeout(() => {
     el('splash').classList.add('fade-out');
     el('app').classList.remove('hidden');
-    setTimeout(() => { el('splash').style.display='none'; }, 500);
-    navigateTo('dashboard');
+    setTimeout(() => {
+      el('splash').style.display='none';
+      navigateTo('dashboard');
+      // Init pixel art setelah DOM ready
+      setTimeout(() => PIXEL.init(), 300);
+    }, 500);
   }, 1500);
   registerSW();
   setTimeout(() => scheduleNotifications(), 3000);
@@ -2665,5 +2672,303 @@ async function generatePDF() {
   win.onload = () => { win.focus(); win.print(); };
   showToast('PDF siap! Pilih "Save as PDF" saat print 📄');
 }
+
+// ===== PIXEL ART ANIMATIONS =====
+const PIXEL = {
+  canvas: null, ctx: null,
+  anim: null, sceneIndex: 0, frame: 0,
+  rotateTimer: null,
+  SCENES: ['steve', 'nyan', 'aqua'],
+  SCENE_DURATION: 20000, // ganti tiap 20 detik
+
+  init() {
+    this.canvas = el('pixelCanvas');
+    if(!this.canvas) return;
+    this.ctx = this.canvas.getContext('2d');
+    this.resize();
+    this.startScene(0);
+    this.rotateTimer = setInterval(() => {
+      this.sceneIndex = (this.sceneIndex + 1) % this.SCENES.length;
+      this.startScene(this.sceneIndex);
+    }, this.SCENE_DURATION);
+  },
+
+  resize() {
+    if(!this.canvas) return;
+    const card = this.canvas.parentElement;
+    if(card) {
+      this.canvas.width  = card.clientWidth  || 140;
+      this.canvas.height = card.clientHeight || 90;
+    }
+  },
+
+  startScene(idx) {
+    if(this.anim) cancelAnimationFrame(this.anim);
+    this.frame = 0;
+    const name = this.SCENES[idx];
+    if(name === 'steve') this.runSteve();
+    else if(name === 'nyan') this.runNyan();
+    else if(name === 'aqua') this.runAqua();
+  },
+
+  // ── SCENE 1: Minecraft Steve ──
+  runSteve() {
+    const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
+    const S = 3; // pixel scale
+    const steveX = { val: -20 }; let dir = 1; let walkFrame = 0;
+    // Pixel art: Steve (10×16 pixels)
+    const STEVE = [
+      // head (row 0-7 = 8px, body 8-15 = 8px)
+      // Each row is array of [r,g,b,a] or null=transparent
+    ];
+    const SKY = [135,206,235], GRASS = [34,139,34], DIRT=[139,90,43], STONE=[128,128,128];
+    const STEVE_SKIN = [255,200,130], STEVE_HAIR=[80,50,20], STEVE_SHIRT=[50,100,200],
+          STEVE_PANTS=[50,50,150], STEVE_SHOE=[60,30,10];
+
+    // Draw pixel fn
+    const px = (x,y,color) => {
+      ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+      ctx.fillRect(Math.floor(x)*S, Math.floor(y)*S, S, S);
+    };
+
+    const drawBg = () => {
+      // Sky
+      ctx.fillStyle = `rgb(${SKY[0]},${SKY[1]},${SKY[2]})`;
+      ctx.fillRect(0,0,W,H);
+      // Sun
+      ctx.fillStyle='#FFD700';
+      for(let i=0;i<4;i++) for(let j=0;j<4;j++) ctx.fillRect((W-20)+i*S,2+j*S,S,S);
+      // Ground blocks
+      const gY = Math.floor(H/S)-4;
+      for(let x=0;x<Math.ceil(W/S);x++) {
+        px(x, gY, GRASS); px(x, gY, [34,139,34]);
+        px(x, gY+1, DIRT); px(x, gY+2, DIRT); px(x, gY+3, STONE);
+      }
+      // Clouds (static)
+      ctx.fillStyle='rgba(255,255,255,0.9)';
+      [[4,2,6,2],[14,1,5,2]].forEach(([cx,cy,cw,ch])=>{
+        for(let i=0;i<cw;i++) for(let j=0;j<ch;j++) ctx.fillRect((cx+i)*S,(cy+j)*S,S,S);
+      });
+    };
+
+    const drawSteve = (sx, flip, wf) => {
+      const gY = Math.floor(H/S)-4;
+      const baseY = gY - 10; // 10 pixels tall
+      const x = Math.floor(sx/S);
+      const leg = wf%2===0;
+      const arm = wf%2!==0;
+      // HEAD 4x4
+      for(let i=0;i<4;i++) for(let j=0;j<4;j++) px(x+i,baseY+j,STEVE_SKIN);
+      // hair top
+      for(let i=0;i<4;i++) px(x+i,baseY,STEVE_HAIR);
+      for(let i=0;i<2;i++) px(x+i,baseY+1,STEVE_HAIR);
+      // eyes
+      px(x+1,baseY+2,[30,30,30]); px(x+2,baseY+2,[30,30,30]);
+      // BODY 4x5
+      for(let i=0;i<4;i++) for(let j=0;j<5;j++) px(x+i,baseY+4+j,STEVE_SHIRT);
+      // LEGS 2x3
+      px(x+1,baseY+9,STEVE_PANTS); px(x+2,baseY+9,STEVE_PANTS);
+      if(leg) {
+        px(x+1,baseY+10,STEVE_PANTS); px(x+1,baseY+11,STEVE_SHOE);
+        px(x+2,baseY+10,STEVE_PANTS); px(x+2,baseY+11,STEVE_SHOE);
+      } else {
+        px(x+0,baseY+10,STEVE_PANTS); px(x+0,baseY+11,STEVE_SHOE);
+        px(x+3,baseY+10,STEVE_PANTS); px(x+3,baseY+11,STEVE_SHOE);
+      }
+    };
+
+    let x = -20;
+    const tick = () => {
+      ctx.clearRect(0,0,W,H);
+      drawBg();
+      drawSteve(x, dir<0, Math.floor(this.frame/5));
+      x += dir * 1.5;
+      if(x > W+20) dir = -1;
+      if(x < -20) dir = 1;
+      this.frame++;
+      if(this.frame % 180 === 0) {
+        // Spawn block
+        const gY = Math.floor(H/S)-4;
+        for(let i=0;i<3;i++) for(let j=0;j<3;j++) {
+          this.ctx.fillStyle=['#8B4513','#808080','#228B22'][Math.floor(Math.random()*3)];
+          this.ctx.fillRect((Math.floor(x/S)+i)*S,(gY-3+j)*S,S,S);
+        }
+      }
+      this.anim = requestAnimationFrame(tick);
+    };
+    tick();
+  },
+
+  // ── SCENE 2: Nyan Cat ──
+  runNyan() {
+    const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
+    const S = 2;
+    let cx = -30;
+    const RAINBOW = ['#FF0000','#FF7700','#FFFF00','#00CC00','#0000FF','#8B00FF'];
+    const trail = [];
+
+    const drawNyan = (x, f) => {
+      // Stars
+      for(let i=0;i<3;i++){
+        const sx=(i*70+this.frame*0.5)%W, sy=5+i*20;
+        ctx.fillStyle='#FFFFFF';
+        ctx.fillRect(sx,sy,2,2); ctx.fillRect(sx+1,sy-1,2,4); ctx.fillRect(sx-1,sy+1,4,2);
+      }
+      // Rainbow trail
+      RAINBOW.forEach((c,i) => {
+        trail.forEach(t => {
+          ctx.fillStyle=c;
+          ctx.fillRect(t.x-i*3, t.y+i*3-3, 4, 3);
+        });
+      });
+      if(trail.length===0 || cx-trail[trail.length-1]?.x > 4) {
+        trail.push({x:cx,y:H/2});
+        if(trail.length>25) trail.shift();
+      }
+
+      const body = cx, by = H/2 - 8;
+      // Pop-tart body (gray/pink)
+      ctx.fillStyle='#C0C0C0';
+      for(let i=0;i<14;i++) for(let j=0;j<9;j++) ctx.fillRect(body+i*S,by+j*S,S,S);
+      // Frosting
+      ctx.fillStyle='#FF69B4';
+      for(let i=1;i<13;i++) for(let j=1;j<8;j++) {
+        if(i%3===0||j%3===0) continue;
+        ctx.fillRect(body+i*S,by+j*S,S,S);
+      }
+      // Sprinkles
+      [[3,2],[5,5],[9,3],[11,6]].forEach(([si,sj])=>{
+        ctx.fillStyle=['#FF0000','#00FF00','#FFFF00','#0000FF'][Math.floor(Math.random()*4)];
+        ctx.fillRect(body+si*S,by+sj*S,S,S);
+      });
+      // Cat head
+      ctx.fillStyle='#808080';
+      for(let i=0;i<7;i++) for(let j=0;j<6;j++) ctx.fillRect(body+13*S+i*S,by+j*S,S,S);
+      // ears
+      ctx.fillRect(body+13*S,by-S,S,S); ctx.fillRect(body+19*S,by-S,S,S);
+      // eyes
+      ctx.fillStyle='#000'; ctx.fillRect(body+15*S,by+2*S,S*2,S);
+      // mouth
+      ctx.fillStyle='#000'; ctx.fillRect(body+14*S,by+4*S,S,S); ctx.fillRect(body+18*S,by+4*S,S,S);
+      // legs (animated)
+      const leg = f%4<2;
+      ctx.fillStyle='#808080';
+      if(leg){
+        ctx.fillRect(body+2*S,by+9*S,2*S,3*S); ctx.fillRect(body+9*S,by+9*S,2*S,3*S);
+      } else {
+        ctx.fillRect(body+3*S,by+9*S,2*S,3*S); ctx.fillRect(body+8*S,by+9*S,2*S,3*S);
+      }
+      // tail
+      ctx.fillRect(body-2*S,by+3*S,2*S,2*S);
+    };
+
+    const tick = () => {
+      // Space bg
+      ctx.fillStyle='#0a0020';
+      ctx.fillRect(0,0,W,H);
+      // Stars bg
+      [12,30,55,80,100,130,160].forEach((sx,i) => {
+        const sy=[8,25,15,35,5,28,20][i]%H;
+        ctx.fillStyle='rgba(255,255,255,'+(0.5+Math.sin(this.frame*0.1+i)*0.5)+')';
+        ctx.fillRect(sx,sy,2,2);
+      });
+      drawNyan(cx, this.frame);
+      cx += 2;
+      if(cx > W+40) { cx = -40; trail.length=0; }
+      this.frame++;
+      this.anim = requestAnimationFrame(tick);
+    };
+    tick();
+  },
+
+  // ── SCENE 3: Pixel Aquarium ──
+  runAqua() {
+    const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
+    const fishes = [
+      {x:20, y:H*0.3, dx:0.8, color:'#FF6B35', size:2, wig:0},
+      {x:80, y:H*0.6, dx:-0.6, color:'#4ECDC4', size:1.5, wig:1},
+      {x:50, y:H*0.5, dx:1.0, color:'#FFE66D', size:1, wig:2},
+      {x:110,y:H*0.4, dx:-0.7, color:'#A8E6CF', size:1.8, wig:1.5},
+    ];
+    const bubbles = Array.from({length:8},(_,i)=>({x:20+i*18,y:H-5,speed:0.4+Math.random()*0.4}));
+    const S=2;
+
+    const drawFish = (f, frame) => {
+      const x=Math.floor(f.x), y=Math.floor(f.y);
+      const flip = f.dx < 0;
+      const tail = Math.sin(frame*0.15+f.wig)>0;
+      ctx.fillStyle = f.color;
+      const sc = f.size;
+      // body
+      for(let i=0;i<6;i++) for(let j=0;j<4;j++) {
+        if((i===0&&(j===0||j===3))||(i===5&&(j===0||j===3))) continue;
+        const bx = flip ? x+(5-i)*S*sc : x+i*S*sc;
+        ctx.fillRect(bx, y+j*S*sc, S*sc, S*sc);
+      }
+      // tail
+      const tx = flip ? x+7*S*sc : x-2*S*sc;
+      if(tail){
+        ctx.fillRect(tx, y, S*sc, S*sc);
+        ctx.fillRect(tx, y+3*S*sc, S*sc, S*sc);
+      } else {
+        ctx.fillRect(tx, y+S*sc, S*sc, 2*S*sc);
+      }
+      // eye
+      ctx.fillStyle='#000';
+      const ex = flip ? x+S*sc : x+4*S*sc;
+      ctx.fillRect(ex, y+S*sc, S*sc, S*sc);
+    };
+
+    const tick = () => {
+      // Water bg gradient
+      const grad = ctx.createLinearGradient(0,0,0,H);
+      grad.addColorStop(0,'#0077be');
+      grad.addColorStop(1,'#003d6b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0,0,W,H);
+
+      // Seabed
+      ctx.fillStyle='#c2a46e';
+      ctx.fillRect(0,H-8,W,8);
+      // Seaweed
+      [15,40,70,100,130].forEach(sx => {
+        ctx.fillStyle='#2d8a2d';
+        const h2=10+Math.sin(this.frame*0.05+sx)*3;
+        for(let i=0;i<h2;i++) ctx.fillRect(sx+(Math.sin(i*0.5+this.frame*0.03)*3|0),H-8-i,3,1);
+      });
+
+      // Bubbles
+      bubbles.forEach(b => {
+        b.y -= b.speed;
+        if(b.y < 0) b.y = H - 5;
+        const alpha = 0.3 + Math.sin(this.frame*0.1+b.x)*0.2;
+        ctx.strokeStyle=`rgba(255,255,255,${alpha})`;
+        ctx.lineWidth=1;
+        ctx.beginPath();
+        ctx.arc(b.x+(Math.sin(this.frame*0.02+b.x)*3),b.y,2,0,Math.PI*2);
+        ctx.stroke();
+      });
+
+      // Fish
+      fishes.forEach(f => {
+        drawFish(f, this.frame);
+        f.x += f.dx;
+        f.y += Math.sin(this.frame*0.03+f.wig)*0.3;
+        if(f.x > W+20) f.x = -20;
+        if(f.x < -20) f.x = W+20;
+        f.y = Math.max(10, Math.min(H-20, f.y));
+      });
+
+      this.frame++;
+      this.anim = requestAnimationFrame(tick);
+    };
+    tick();
+  },
+
+  stop() {
+    if(this.anim) cancelAnimationFrame(this.anim);
+    if(this.rotateTimer) clearInterval(this.rotateTimer);
+  }
+};
 
 document.addEventListener('DOMContentLoaded', init);
