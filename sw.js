@@ -1,9 +1,5 @@
 // ===== LIFEHUB SERVICE WORKER =====
-<<<<<<< HEAD
-const CACHE_NAME = 'lifehub-v2.7';
-=======
 const CACHE_NAME = 'lifehub-v2.8';
->>>>>>> fdd3879 (fix scene)
 const ASSETS = [
   './',
   './index.html',
