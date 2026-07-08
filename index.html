@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <title>LifeHub</title>
-  <meta name="description" content="Personal Life Management App — v4.7"/>
+  <meta name="description" content="Personal Life Management App — v2.8"/>
   <meta name="theme-color" content="#6C63FF"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -373,8 +373,16 @@
           <div class="settings-group">
             <div class="settings-group-title">Data</div>
             <div class="settings-item">
+              <label>Auto Backup</label>
+              <span id="autoBackupLabel" style="font-size:.78rem;color:var(--text3)">Memuat...</span>
+            </div>
+            <div class="settings-item">
+              <label>Backup Sekarang</label>
+              <button class="btn btn-outline btn-sm" id="btnBackupNow">💾 Backup</button>
+            </div>
+            <div class="settings-item">
               <label>Export Data</label>
-              <button class="btn btn-outline" id="btnExport">Export JSON</button>
+              <button class="btn btn-outline btn-sm" id="btnExport">Export JSON</button>
             </div>
             <div class="settings-item">
               <label>Import Data</label>
@@ -433,7 +441,7 @@
           <div class="settings-group">
             <div class="settings-group-title">Tentang</div>
             <div class="settings-item settings-info">
-              <p><strong>LifeHub</strong> v2.7</p>
+              <p><strong>LifeHub</strong> v2.8</p>
               <p>Manage Your Own Life</p>
               <p>In Collaboration Azar & ClaudeAI</p>
             </div>
