@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <title>LifeHub</title>
-  <meta name="description" content="Personal Life Management App — v2.8"/>
+  <meta name="description" content="Personal Life Management App — v3.0"/>
   <meta name="theme-color" content="#6C63FF"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -106,7 +106,10 @@
             <h1 class="greeting-name" id="greetName">Azhar</h1>
             <p class="greeting-date" id="greetDate"></p>
           </div>
-          <div class="live-clock" id="liveClock"></div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;position:relative;z-index:3">
+            <div class="live-clock" id="liveClock"></div>
+            <button class="btn btn-sm" id="btnWeeklyReview" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);font-size:.7rem;padding:4px 10px;backdrop-filter:blur(4px)">📊 Weekly Review</button>
+          </div>
         </div>
         <div class="dash-grid">
           <div class="dash-card mood-card">
@@ -441,7 +444,7 @@
           <div class="settings-group">
             <div class="settings-group-title">Tentang</div>
             <div class="settings-item settings-info">
-              <p><strong>LifeHub</strong> v2.8</p>
+              <p><strong>LifeHub</strong> v3.0</p>
               <p>Manage Your Own Life</p>
               <p>In Collaboration Azar & ClaudeAI</p>
             </div>
@@ -670,6 +673,34 @@
   <div class="modal-footer">
     <button class="btn btn-outline" id="confirmNo">Batal</button>
     <button class="btn btn-danger" id="confirmYes">Ya, Lanjutkan</button>
+  </div>
+</div>
+
+<!-- Weekly Review Modal -->
+<div class="modal modal-large" id="weeklyReviewModal">
+  <div class="modal-header">
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <h3 id="weeklyReviewTitle">📊 Weekly Review</h3>
+      <span id="weeklyReviewRange" style="font-size:.75rem;color:var(--text3)"></span>
+    </div>
+    <button class="modal-close" data-modal="weeklyReviewModal">✕</button>
+  </div>
+  <div class="modal-body" id="weeklyReviewBody"></div>
+  <div class="modal-footer">
+    <button class="btn btn-outline btn-sm" id="btnWeeklyReviewHistory">📋 Riwayat</button>
+    <button class="btn btn-primary" data-modal="weeklyReviewModal">Tutup</button>
+  </div>
+</div>
+
+<!-- Weekly Review History Modal -->
+<div class="modal modal-large" id="weeklyHistoryModal">
+  <div class="modal-header">
+    <h3>📋 Riwayat Weekly Review</h3>
+    <button class="modal-close" data-modal="weeklyHistoryModal">✕</button>
+  </div>
+  <div class="modal-body" id="weeklyHistoryBody"></div>
+  <div class="modal-footer">
+    <button class="btn btn-outline" data-modal="weeklyHistoryModal">Tutup</button>
   </div>
 </div>
 
