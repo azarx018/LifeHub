@@ -111,7 +111,8 @@ const S = {
   journalDate: today(),
   journalSearch: '',
   activityRange: 7,
-  activityWeekOffset: 0, // 0 = minggu ini, -1 = minggu lalu, dst
+  activityWeekOffset: 0,
+  waterDate: today(), // 0 = minggu ini, -1 = minggu lalu, dst
   settings: { name:'Azhar', darkMode:false, sleepTarget:8, waterTarget:8 },
   todos: [], habits: [], habitLogs: [], journals: [],
   sleepLogs: [], goals: [], milestones: [], waterLogs: [],
@@ -720,9 +721,10 @@ function updateClock() {
   if(currentDate !== _lastDate) {
     _lastDate = currentDate;
     // Reset date-scoped states ke hari baru
-    S.habitDate  = currentDate;
-    S.sholatDate = currentDate;
-    S.journalDate= currentDate;
+    S.habitDate   = currentDate;
+    S.sholatDate  = currentDate;
+    S.journalDate = currentDate;
+    S.waterDate   = currentDate;
     S._journalManualNav = false; // reset manual nav flag saat hari berganti
     updateSkyBackground();
     if(S.currentPage === 'dashboard') renderDashboard();
@@ -1083,12 +1085,13 @@ async function renderHabits() {
     const streak = calcStreak(h.id, hLogs);
     const monday = getMondayOfWeek(S.habitDate);
     const weekDays = getWeekDays(monday);
-    const weekDone = weekDays.filter(ds => hLogs.some(l => l.habitId === h.id && l.date === ds)).length;
-    const pct = Math.round(weekDone / (h.target||7) * 100);
-    // Label minggu: "Sen 30 Jun – Min 6 Jul"
-    const sundayDate = new Date(monday + 'T12:00:00');
-    sundayDate.setDate(sundayDate.getDate() + 6);
-    const weekLabel = `${weekDone}/${h.target||7} minggu ini`;
+    // Hanya hitung hari sejak habit dibuat (createdAt)
+    const effectiveDays = weekDays.filter(ds => !h.createdAt || ds >= h.createdAt);
+    const weekDone = effectiveDays.filter(ds => hLogs.some(l => l.habitId === h.id && l.date === ds)).length;
+    const effectiveTarget = Math.min(h.target||7, effectiveDays.length) || 1;
+    const pct = Math.round(weekDone / effectiveTarget * 100);
+    const newHabitNote = h.createdAt && h.createdAt > monday ? ' · habit baru' : '';
+    const weekLabel = `${weekDone}/${effectiveTarget} minggu ini${newHabitNote}`;
     const item = document.createElement('div');
     item.className = 'habit-item animate-in';
     item.innerHTML = `
@@ -1205,11 +1208,18 @@ function renderStreakCalendar(habits, hLogs) {
   const totalCols = WEEKS; // selalu tepat 16 kolom
 
   // Build logMap: date -> Set of habitIds
+  // Juga build habitCreatedMap: habitId -> createdAt
+  const habitCreatedMap = {};
+  habits.forEach(h => { habitCreatedMap[h.id] = h.createdAt || '2000-01-01'; });
+
   const logMap = {};
   hLogs.forEach(l => {
     if(!logMap[l.date]) logMap[l.date] = new Set();
     logMap[l.date].add(l.habitId);
   });
+
+  // Untuk tiap hari, hitung berapa habit yang SUDAH ADA di hari itu
+  const activeHabitsOnDay = (ds) => habits.filter(h => (h.createdAt||'2000-01-01') <= ds).length || 1;
 
   // Current streak — hitung mundur dari hari ini
   let currentStreak = 0;
@@ -1270,11 +1280,13 @@ function renderStreakCalendar(habits, hLogs) {
       const ds = localStr(cellDate);
       const isToday = ds === todayStr;
       const cnt = logMap[ds] ? logMap[ds].size : 0;
+      // Hanya hitung habit yang sudah ada di hari itu
+      const activeOnDay = activeHabitsOnDay(ds);
 
       const cell = document.createElement('div');
       cell.className = 'streak-cell';
 
-      const pct = cnt / totalHabits;
+      const pct = cnt / activeOnDay;
       let level = 0;
       if(pct >= 0.01) level = 1;
       if(pct >= 0.5)  level = 2;
@@ -1283,7 +1295,7 @@ function renderStreakCalendar(habits, hLogs) {
       cell.classList.add('level-' + level);
       if(isToday) cell.classList.add('today');
 
-      const tipText = `${cellDate.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}: ${cnt}/${totalHabits} habit`;
+      const tipText = `${cellDate.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}: ${cnt}/${activeOnDay} habit`;
       const showTip = e => {
         if(!tooltipEl) return;
         tooltipEl.textContent = tipText;
@@ -1639,37 +1651,69 @@ async function saveSleep() {
 // ===== WATER =====
 async function renderWater() {
   const logs = await DB.getAll('waterLogs');
-  const todayLogs = logs.filter(w => w.date === today()).sort((a,b) => a.time.localeCompare(b.time));
+  const isToday2 = S.waterDate === today();
+
+  // Update nav
+  const dateEl = el('waterCurrentDate');
+  if(dateEl) dateEl.textContent = isToday2 ? 'Hari Ini' : fmtShort(S.waterDate+'T12:00:00');
+  const nextBtn = el('waterNextDay');
+  if(nextBtn) nextBtn.style.opacity = isToday2 ? '0.3' : '1';
+
+  const dateLogs = logs.filter(w => w.date === S.waterDate).sort((a,b) => a.time.localeCompare(b.time));
   const wt = S.settings.waterTarget || 8;
-  const wc = todayLogs.length;
+  const wc = dateLogs.length;
   const pct = Math.min(100, Math.round(wc/wt*100));
   const wf = el('waterFill'); if(wf) wf.style.height = pct + '%';
   const wp = el('waterPercent'); if(wp) wp.textContent = pct + '%';
   const wCount = el('waterCount'); if(wCount) wCount.innerHTML = `${wc} <span>gelas</span>`;
   const wTxt = el('waterTargetText'); if(wTxt) wTxt.textContent = `Target: ${wt} gelas`;
   const wti = el('waterTargetInput'); if(wti) wti.value = wt;
-  const cupsGrid = el('waterCupsGrid'); if(cupsGrid) {
+
+  // Sembunyikan tombol tambah/reset kalau bukan hari ini
+  const addBtn = el('btnAddWaterMain');
+  const resetBtn = el('btnResetWater');
+  if(addBtn)   addBtn.style.display   = isToday2 ? '' : 'none';
+  if(resetBtn) resetBtn.style.display = isToday2 ? '' : 'none';
+
+  const cupsGrid = el('waterCupsGrid');
+  if(cupsGrid) {
     cupsGrid.innerHTML = '';
     for(let i=0; i<wt; i++) {
       const cup = document.createElement('div');
       cup.className = `water-cup ${i<wc?'filled':''}`;
       cup.innerHTML = `<svg viewBox="0 0 24 24" fill="${i<wc?'#44A8E0':'none'}" stroke="${i<wc?'#44A8E0':'var(--text3)'}" stroke-width="2" width="26" height="26"><path d="M8 2h8l1 8H7L8 2z"/><path d="M7 10c0 5 1 10 5 10s5-5 5-10"/></svg><small>Gelas ${i+1}</small>`;
-      cup.addEventListener('click', async () => {
-        if(i < wc) {
-          const logToRemove = todayLogs[i];
-          if(logToRemove) { await DB.delete('waterLogs', logToRemove.id); renderWater(); }
-        } else {
-          await addWater();
-        }
-      });
+      if(isToday2) {
+        cup.addEventListener('click', async () => {
+          if(i < wc) {
+            const logToRemove = dateLogs[i];
+            if(logToRemove) { await DB.delete('waterLogs', logToRemove.id); renderWater(); }
+          } else {
+            await addWater();
+          }
+        });
+      }
       cupsGrid.appendChild(cup);
     }
   }
-  const wLog = el('waterLog'); if(wLog) {
-    wLog.innerHTML = todayLogs.length ? todayLogs.map(l => `<div class="water-log-item"><span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" fill="#44A8E0" stroke="#44A8E0" stroke-width="1" width="13" height="13"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg> ${l.time}</span><span>+1 gelas</span></div>`).join('') : '';
+  const wLog = el('waterLog');
+  if(wLog) {
+    if(dateLogs.length) {
+      wLog.innerHTML = dateLogs.map(l => `
+        <div class="water-log-item">
+          <span style="display:flex;align-items:center;gap:4px">
+            <svg viewBox="0 0 24 24" fill="#44A8E0" stroke="#44A8E0" stroke-width="1" width="13" height="13"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>
+            ${l.time}
+          </span>
+          <span>+1 gelas</span>
+        </div>`).join('');
+    } else {
+      wLog.innerHTML = `<p style="font-size:.8rem;color:var(--text3);text-align:center;padding:12px 0">Tidak ada catatan air minum${isToday2?'':" di hari ini"}</p>`;
+    }
   }
 }
+
 async function addWater() {
+  if(S.waterDate !== today()) return; // hanya bisa tambah di hari ini
   const wt = S.settings.waterTarget || 8;
   const logs = await DB.getAll('waterLogs');
   const todayLogs = logs.filter(w => w.date === today());
@@ -1950,7 +1994,7 @@ async function renderSettings() {
     } else if(backupInfo.daysAgo === 0) {
       backupLabel.textContent = 'Hari ini ✅';
     } else {
-      backupLabel.textContent = `${backupInfo.daysAgo} hari lalu · backup berikutnya ${backupInfo.nextIn === 0 ? 'hari ini' : `${backupInfo.nextIn} hari lagi`}`;
+      backupLabel.textContent = `${backupInfo.daysAgo} hari lalu · backup otomatis tiap hari`;
     }
   }
 }
@@ -1987,7 +2031,7 @@ async function importData(file) {
 }
 
 // ===== AUTO BACKUP =====
-const AUTO_BACKUP_DAYS = 3;
+const AUTO_BACKUP_DAYS = 1; // backup setiap hari
 async function checkAutoBackup() {
   const lastBackup = await KV.get('last_auto_backup', null);
   const now2 = today();
@@ -2128,14 +2172,25 @@ function setupEvents() {
   el('btnResetWater').addEventListener('click', async () => {
     confirm2('Reset air minum hari ini?', async () => {
       const logs = await DB.getAll('waterLogs');
-      const todayLogs = logs.filter(w => w.date === today());
-      for(const l of todayLogs) await DB.delete('waterLogs', l.id);
+      const dayLogs = logs.filter(w => w.date === S.waterDate);
+      for(const l of dayLogs) await DB.delete('waterLogs', l.id);
       renderWater(); showToast('Air direset');
     });
   });
   el('waterTargetInput').addEventListener('change', async e => {
     const val = parseInt(e.target.value);
     if(val && val > 0) { S.settings.waterTarget = val; saveSettings(); renderWater(); showToast('Target diperbarui'); }
+  });
+  el('waterPrevDay').addEventListener('click', () => {
+    const d = new Date(S.waterDate+'T12:00:00'); d.setDate(d.getDate()-1);
+    S.waterDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    renderWater();
+  });
+  el('waterNextDay').addEventListener('click', () => {
+    if(S.waterDate >= today()) return;
+    const d = new Date(S.waterDate+'T12:00:00'); d.setDate(d.getDate()+1);
+    S.waterDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    renderWater();
   });
   // GOALS
   el('btnAddGoal').addEventListener('click', () => openGoalModal());
@@ -2376,9 +2431,12 @@ async function renderActivity() {
   // Habit stats per habit
   const habitStats = habits.map(h => {
     const doneLogs = rHLogs.filter(l => l.habitId === h.id);
-    const possible = periodDays;
+    // Hitung hari efektif: sejak habit dibuat, dalam range yang dipilih
+    const habitStart = h.createdAt && h.createdAt > range.start ? h.createdAt : range.start;
+    const possible = Math.max(1, daysBetween(habitStart, range.end));
     const pct = possible ? Math.round(doneLogs.length/possible*100) : 0;
-    return { ...h, done: doneLogs.length, possible, pct };
+    const isNew = h.createdAt && h.createdAt > range.start;
+    return { ...h, done: doneLogs.length, possible, pct, isNew };
   }).sort((a,b) => b.done - a.done);
 
   // Sleep stats
@@ -2480,9 +2538,9 @@ async function renderActivity() {
       </div>
       ${habitStats.length === 0 ? '<p class="activity-empty">Belum ada habit</p>' :
         habitStats.map(h => `<div class="activity-progress-row">
-          <span class="activity-progress-label" style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.icon||'🔥'} ${escHtml(h.name)}</span>
+          <span class="activity-progress-label" style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.icon||'🔥'} ${escHtml(h.name)}${h.isNew?'<span style="font-size:.6rem;background:var(--primary);color:white;padding:1px 4px;border-radius:4px;margin-left:3px">baru</span>':''}</span>
           <div class="activity-progress-bar"><div class="activity-progress-fill" style="width:${h.pct}%;background:${h.color||'#6C63FF'}"></div></div>
-          <span class="activity-progress-pct">${h.done}/${periodDays} (${h.pct}%)</span>
+          <span class="activity-progress-pct">${h.done}/${h.possible} (${h.pct}%)</span>
         </div>`).join('')
       }
     </div>
@@ -2694,7 +2752,7 @@ async function generatePDF() {
     <div class="section-title">🔥 Habit Tracker</div>
     ${habitStats.length===0?'<p style="color:#aaa;font-size:12px">Belum ada habit.</p>':
     `<table><tr><th>Habit</th><th>Dilakukan</th><th>Dari (Hari)</th><th>Persentase</th><th>Progress</th></tr>
-      ${habitStats.map(h=>`<tr><td>${h.icon||'🔥'} ${escHtml(h.name)}</td><td>${h.done} kali</td><td>${periodDays} hari</td><td>${h.pct}%</td><td>${progressBar(h.pct,h.color||'#6C63FF')}</td></tr>`).join('')}
+      ${habitStats.map(h=>`<tr><td>${h.icon||'🔥'} ${escHtml(h.name)}${h.isNew?' <em style="color:#6C63FF;font-size:10px">(habit baru)</em>':''}</td><td>${h.done} kali</td><td>${h.possible} hari</td><td>${h.pct}%</td><td>${progressBar(h.pct,h.color||'#6C63FF')}</td></tr>`).join('')}
     </table>`}
   </div>
 
