@@ -1,9 +1,9 @@
-/* ===== LIFEHUB APP.JS v4.3 ===== */
+/* ===== LIFEHUB APP.JS v4.4 ===== */
 'use strict';
 
 // Single source of truth buat versi app — dipakai buat isi teks "Tentang" &
 // meta description secara otomatis, biar ngga ada lagi tempat yang kelewat update.
-const APP_VERSION = '4.3';
+const APP_VERSION = '4.4';
 
 // ===== DB WRAPPER =====
 const DB = {
@@ -755,6 +755,7 @@ function updateGreeting() {
 
 // ===== NAVIGATION =====
 function navigateTo(page) {
+  const prevPage = S.currentPage;
   qsa('.page').forEach(p => p.classList.remove('active'));
   const pg = el('page-' + page); if(pg) pg.classList.add('active');
   qsa('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
@@ -763,6 +764,9 @@ function navigateTo(page) {
   const tb = el('topbarTitle'); if(tb) tb.textContent = titles[page] || page;
   S.currentPage = page;
   closeSidebar();
+  // Widget animasi pixel cuma perlu jalan pas di Dashboard — matiin kalau pindah
+  // halaman lain biar ngga makan CPU/baterai di background terus-terusan.
+  if(prevPage === 'dashboard' && page !== 'dashboard') PIXEL.stop();
   switch(page) {
     case 'dashboard':
       renderDashboard();
@@ -2546,9 +2550,7 @@ async function init() {
     el('app').classList.remove('hidden');
     setTimeout(() => {
       el('splash').style.display='none';
-      navigateTo('dashboard');
-      // Init pixel art setelah DOM ready
-      setTimeout(() => PIXEL.init(), 300);
+      navigateTo('dashboard'); // navigateTo sudah nge-trigger PIXEL.init() sendiri
     }, 500);
   }, 1500);
   registerSW();
@@ -4064,7 +4066,7 @@ const PIXEL = {
   canvas: null, ctx: null,
   anim: null, sceneIndex: 0, frame: 0,
   rotateTimer: null,
-  SCENES: ['pet', 'steve', 'nyan', 'aqua', 'bakso', 'firework', 'goat'],
+  SCENES: ['pet', 'steve', 'nyan', 'aqua', 'bakso', 'goat'],
   SCENE_DURATION: 20000,
 
   init() {
@@ -4120,7 +4122,6 @@ const PIXEL = {
       nyan: ()=>this.runNyan(),
       aqua: ()=>this.runAqua(),
       bakso: ()=>this.runBakso(),
-      firework: ()=>this.runFirework(),
       goat: ()=>this.runGoat()
     }[name];
     if(fn) fn();
@@ -4422,7 +4423,14 @@ const PIXEL = {
         celebT++; const jmp=Math.abs(Math.sin(celebT*0.25))*3;
         ctx.save(); ctx.translate(0,-jmp); drawSteve(sx,0,false); ctx.restore();
         ctx.font='10px sans-serif'; ctx.fillText('⭐',(sx+5)*S,(gY-14)*S);
-        if(celebT>70){state='walk'; trees.forEach(t=>{if(t.hp<=0&&!t.falling){t.hp=4;t.angle=0;t.falling=false;}}); }
+        if(celebT>70){
+          state='walk';
+          trees.forEach(t=>{if(t.hp<=0&&!t.falling){t.hp=4;t.angle=0;t.falling=false;}});
+          // Fix: dulu Steve ngga digeser abis pohon respawn, jadi dia langsung
+          // ke-detect "deket pohon" lagi dan chop pohon yang sama terus-menerus,
+          // ngga pernah lanjut ke pohon kedua. Geser dulu biar keluar dari radius deteksi.
+          sx += dir*9;
+        }
       }
       this.frame++; this.anim=requestAnimationFrame(tick);
     };
@@ -4613,50 +4621,6 @@ const PIXEL = {
     tick();
   },
 
-  // ══ SCENE 6: Kembang Api ══
-  runFirework() {
-    const ctx=this.ctx, W=this.canvas.width, H=this.canvas.height;
-    const parts=[];
-    const COLS=['#FF6B6B','#FFE44D','#43E97B','#4ECDC4','#6C63FF','#FF6584','#FFD700'];
-    let tAlpha=0.3, tDir=1;
-    const launch=()=>{
-      const x=15+Math.random()*(W-30), y=8+Math.random()*(H*0.45);
-      const col=COLS[Math.floor(Math.random()*COLS.length)];
-      for(let i=0;i<20;i++){
-        const a=(i/20)*Math.PI*2, sp=1.2+Math.random()*1.8;
-        parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,a:1,col,size:2+Math.random()*1.5});
-      }
-    };
-    const tick=()=>{
-      ctx.fillStyle='rgba(5,5,20,0.22)'; ctx.fillRect(0,0,W,H);
-      [12,28,55,80,110,140].forEach((sx,i)=>{
-        ctx.fillStyle=`rgba(255,255,255,${(Math.sin(this.frame*0.08+i)*0.4+0.6)*0.7})`;
-        ctx.fillRect(sx,[8,20,5,30,12,25][i],1,1);
-      });
-      for(let i=parts.length-1;i>=0;i--){
-        const p=parts[i];
-        p.x+=p.vx; p.y+=p.vy; p.vy+=0.045; p.a-=0.018;
-        ctx.globalAlpha=Math.max(0,p.a);
-        ctx.fillStyle=p.col; ctx.fillRect(p.x,p.y,p.size,p.size);
-        if(p.a<=0) parts.splice(i,1);
-      }
-      ctx.globalAlpha=1;
-      if(this.frame%40===0) launch();
-      if(this.frame%65===3) launch();
-      tAlpha+=tDir*0.025; if(tAlpha>=1){tAlpha=1;tDir=-1;} if(tAlpha<=0.3){tAlpha=0.3;tDir=1;}
-      ctx.save(); ctx.globalAlpha=tAlpha;
-      ctx.font=`bold ${Math.max(10,H*0.18)|0}px 'Poppins',sans-serif`;
-      ctx.textAlign='center';
-      const g=ctx.createLinearGradient(0,H*0.55,W,H*0.75);
-      g.addColorStop(0,'#FFD700'); g.addColorStop(0.5,'#FF6584'); g.addColorStop(1,'#6C63FF');
-      ctx.fillStyle=g; ctx.shadowColor='rgba(255,200,0,0.8)'; ctx.shadowBlur=8;
-      ctx.fillText('Hai Azhar!',W/2,H*0.72);
-      ctx.restore();
-      this.frame++; this.anim=requestAnimationFrame(tick);
-    };
-    tick();
-  },
-
   // ══ SCENE 7: Kambing Kacamata ══
   runGoat() {
     const ctx=this.ctx, W=this.canvas.width, H=this.canvas.height;
@@ -4731,5 +4695,15 @@ const PIXEL = {
 window.playerAttack = playerAttack;
 window.useSkill     = useSkill;
 window.startBattle  = startBattle;
+
+// Pause widget animasi pas app di-minimize/HP dikunci (hemat baterai),
+// lanjut lagi otomatis pas dibuka kembali kalau posisinya di Dashboard.
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden) {
+    PIXEL.stop();
+  } else if(S.currentPage === 'dashboard' && el('pixelCanvas') && !PIXEL.anim) {
+    PIXEL.init();
+  }
+});
 
 document.addEventListener('DOMContentLoaded', init);
