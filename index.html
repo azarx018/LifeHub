@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <title>LifeHub</title>
-  <meta name="description" content="Personal Life Management App — v3.3"/>
+  <meta name="description" content="Personal Life Management App — v4.3"/>
   <meta name="theme-color" content="#6C63FF"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -115,6 +115,14 @@
           </div>
         </div>
         <div class="dash-grid">
+          <div class="dash-card insight-card" id="dashInsightCard" style="grid-column:span 2">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0012 2z"/></svg> Pola & Insight</div>
+            <div id="dashInsights" class="dash-insights-list"></div>
+          </div>
+          <div class="dash-card countdown-card" id="dashCountdownCard" style="grid-column:span 2">
+            <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Countdown</div>
+            <div id="dashCountdowns" class="dash-countdowns-list"></div>
+          </div>
           <div class="dash-card mood-card">
             <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg> Mood Hari Ini</div>
             <div class="mood-row" id="dashMoodRow">
@@ -458,9 +466,18 @@
             </div>
           </div>
           <div class="settings-group">
+            <div class="settings-group-title">⏳ Countdown</div>
+            <div id="countdownList"></div>
+            <div class="settings-item" style="flex-wrap:wrap;gap:8px">
+              <input type="text" id="countdownName" class="input-field" placeholder="Nama (misal: 18 Tahun)" style="flex:1;min-width:120px"/>
+              <input type="date" id="countdownDate" class="input-sm" style="width:auto"/>
+              <button class="btn btn-primary btn-sm" id="btnAddCountdown">+ Tambah</button>
+            </div>
+          </div>
+          <div class="settings-group">
             <div class="settings-group-title">Tentang</div>
             <div class="settings-item settings-info">
-              <p><strong>LifeHub</strong> v3.3</p>
+              <p><strong>LifeHub</strong> v4.3</p>
               <p>Manage Your Own Life</p>
               <p>In Collaboration Azar & ClaudeAI</p>
             </div>

@@ -211,6 +211,17 @@ ul{list-style:none}
 .dash-habits-list,.dash-todos-list{display:flex;flex-direction:column;gap:5px}
 .dash-habit-row,.dash-todo-row{display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--text2)}
 .dash-habit-row input[type=checkbox],.dash-todo-row input[type=checkbox]{width:15px;height:15px;accent-color:var(--primary)}
+.dash-insights-list{display:flex;flex-direction:column;gap:8px}
+.dash-insight-row{display:flex;align-items:flex-start;gap:8px;font-size:.8rem;color:var(--text2);background:var(--bg3);border-radius:var(--radius-sm);padding:8px 10px}
+.dash-insight-emoji{font-size:1rem;flex-shrink:0;line-height:1.4}
+.dash-insight-text{line-height:1.4}
+.dash-countdowns-list{display:flex;gap:10px;overflow-x:auto;padding-bottom:2px}
+.dash-countdown-item{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;min-width:88px;background:var(--bg3);border-radius:var(--radius-sm);padding:10px 12px;text-align:center}
+.dash-countdown-item.passed{opacity:.6}
+.dash-countdown-num{font-size:1.4rem;font-weight:800;color:var(--primary)}
+.dash-countdown-item.passed .dash-countdown-num{font-size:1.2rem}
+.dash-countdown-name{font-size:.72rem;font-weight:600;margin-top:2px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash-countdown-sub{font-size:.66rem;color:var(--text3)}
 
 /* Sholat dash */
 .dash-sholat-list{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}

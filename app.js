@@ -1,5 +1,9 @@
-/* ===== LIFEHUB APP.JS v1.2 ===== */
+/* ===== LIFEHUB APP.JS v4.3 ===== */
 'use strict';
+
+// Single source of truth buat versi app — dipakai buat isi teks "Tentang" &
+// meta description secara otomatis, biar ngga ada lagi tempat yang kelewat update.
+const APP_VERSION = '4.3';
 
 // ===== DB WRAPPER =====
 const DB = {
@@ -814,9 +818,112 @@ function confirm2(text, cb) {
 }
 
 // ===== DASHBOARD =====
+// ===== POLA & INSIGHT =====
+// Nge-scan data terakhir buat cari pola sederhana (bukan AI, cuma aturan/threshold biasa).
+// Tiap insight punya syarat data minimum biar ngga nge-judge dari sample yang kekecilan.
+async function computeInsights() {
+  const [habits, hLogs, sleepLogs, waterLogs, settingsRows] = await Promise.all([
+    DB.getAll('habits'), DB.getAll('habitLogs'), DB.getAll('sleepLogs'),
+    DB.getAll('waterLogs'), DB.getAll('settings')
+  ]);
+  const moodRows = settingsRows.filter(r => r.id.startsWith('mood_'));
+  const moodScore = { excited:5, happy:4, neutral:3, tired:2, sad:1 };
+  const sleepTarget = S.settings.sleepTarget || 8;
+  const insights = [];
+
+  const days7 = []; { let d = today(); for(let i=0;i<7;i++){ days7.push(d); d = prevDay(d); } }
+  const days14 = []; { let d = today(); for(let i=0;i<14;i++){ days14.push(d); d = prevDay(d); } }
+
+  // 1. Tidur di bawah target beberapa hari terakhir
+  const recentSleep = sleepLogs.filter(s => days7.includes(s.date));
+  if (recentSleep.length >= 3) {
+    const belowCount = recentSleep.filter(s => s.duration < sleepTarget).length;
+    if (belowCount >= Math.ceil(recentSleep.length * 0.6)) {
+      const avgDur = recentSleep.reduce((a,s) => a + s.duration, 0) / recentSleep.length;
+      insights.push({ emoji:'😴', text:`Tidur kamu di bawah target ${belowCount} dari ${recentSleep.length} hari terakhir — rata-rata ${avgDur.toFixed(1)} jam` });
+    }
+  }
+
+  // 2. Korelasi mood turun di hari tidur kurang
+  if (recentSleep.length >= 3 && moodRows.length >= 3) {
+    const pairs = recentSleep
+      .map(s => { const m = moodRows.find(r => r.id === 'mood_'+s.date); return m ? { duration: s.duration, mood: moodScore[m.value] || 3 } : null; })
+      .filter(Boolean);
+    const lowSleepMoods = pairs.filter(p => p.duration < sleepTarget).map(p => p.mood);
+    const goodSleepMoods = pairs.filter(p => p.duration >= sleepTarget).map(p => p.mood);
+    if (lowSleepMoods.length >= 2 && goodSleepMoods.length >= 2) {
+      const avgLow = lowSleepMoods.reduce((a,b) => a+b, 0) / lowSleepMoods.length;
+      const avgGood = goodSleepMoods.reduce((a,b) => a+b, 0) / goodSleepMoods.length;
+      if (avgGood - avgLow >= 1) {
+        insights.push({ emoji:'😔', text:'Mood kamu cenderung lebih rendah di hari-hari tidurnya kurang dari target' });
+      }
+    }
+  }
+
+  // 3. Habit paling sering keskip di hari tertentu
+  if (habits.length > 0) {
+    const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+    const missByWeekday = new Array(7).fill(0);
+    const totalByWeekday = new Array(7).fill(0);
+    days14.forEach(ds => {
+      const wd = new Date(ds+'T12:00:00').getDay();
+      habits.forEach(h => {
+        totalByWeekday[wd]++;
+        if (!hLogs.some(l => l.habitId===h.id && l.date===ds)) missByWeekday[wd]++;
+      });
+    });
+    let worstWd = -1, worstRate = 0;
+    for (let wd=0; wd<7; wd++) {
+      if (totalByWeekday[wd] >= 4) {
+        const rate = missByWeekday[wd] / totalByWeekday[wd];
+        if (rate > worstRate) { worstRate = rate; worstWd = wd; }
+      }
+    }
+    if (worstWd >= 0 && worstRate >= 0.5) {
+      insights.push({ emoji:'🔥', text:`Habit kamu paling sering keskip di hari ${dayNames[worstWd]}` });
+    }
+  }
+
+  // 4. Minum air: hari kerja vs weekend
+  const recentWater14 = waterLogs.filter(w => days14.includes(w.date));
+  if (recentWater14.length >= 6) {
+    const byDate = {};
+    recentWater14.forEach(w => { byDate[w.date] = (byDate[w.date]||0) + 1; });
+    const weekdayCounts = [], weekendCounts = [];
+    Object.entries(byDate).forEach(([ds, c]) => {
+      const wd = new Date(ds+'T12:00:00').getDay();
+      (wd===0||wd===6 ? weekendCounts : weekdayCounts).push(c);
+    });
+    if (weekdayCounts.length >= 2 && weekendCounts.length >= 2) {
+      const avgWd = weekdayCounts.reduce((a,b)=>a+b,0) / weekdayCounts.length;
+      const avgWe = weekendCounts.reduce((a,b)=>a+b,0) / weekendCounts.length;
+      if (avgWd - avgWe >= 1.5) insights.push({ emoji:'💧', text:'Minum air kamu lebih rajin di hari kerja dibanding weekend' });
+      else if (avgWe - avgWd >= 1.5) insights.push({ emoji:'💧', text:'Minum air kamu lebih rajin di weekend dibanding hari kerja' });
+    }
+  }
+
+  return insights.slice(0, 3); // max 3 biar ngga penuh
+}
+
 async function renderDashboard() {
   updateGreeting();
   updateSkyBackground();
+
+  // Pola & Insight
+  const diEl = el('dashInsights');
+  if (diEl) {
+    const insights = await computeInsights();
+    if (!insights.length) {
+      diEl.innerHTML = '<p style="font-size:.8rem;color:var(--text3)">Belum cukup data buat nemuin pola. Terus catat aktivitas kamu ya!</p>';
+    } else {
+      diEl.innerHTML = insights.map(i => `
+        <div class="dash-insight-row">
+          <span class="dash-insight-emoji">${i.emoji}</span>
+          <span class="dash-insight-text">${escHtml(i.text)}</span>
+        </div>`).join('');
+    }
+  }
+  renderDashboardCountdowns();
   // Quote
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(),0,0)) / 86400000);
   const q = QUOTES[dayOfYear % QUOTES.length];
@@ -924,6 +1031,7 @@ async function renderDashboard() {
         if(!todaySholat.id) todaySholat.id = uid();
         await DB.put('sholatLogs', todaySholat);
         renderDashboard();
+        checkAchievements();
       });
       dsEl.appendChild(item);
     });
@@ -1135,6 +1243,7 @@ async function toggleHabitLog(habitId, date) {
   const existing = hLogs.find(l => l.habitId===habitId && l.date===date);
   if(existing) { await DB.delete('habitLogs', existing.id); }
   else { await DB.put('habitLogs', { id: uid(), habitId, date }); }
+  checkAchievements();
 }
 function calcStreak(habitId, logs) {
   const dates = logs.filter(l => l.habitId===habitId).map(l => l.date).sort().reverse();
@@ -1529,6 +1638,7 @@ async function renderSholat() {
       await DB.put('sholatLogs', dayLog);
       renderSholat();
       showToast(dayLog.prayers[p.key] ? `${p.name} tercatat ✓` : `${p.name} dibatalkan`);
+      checkAchievements();
     });
     list.appendChild(item);
   });
@@ -1646,6 +1756,7 @@ async function saveSleep() {
   closeModal('sleepModal');
   renderSleep();
   showToast('Tidur dicatat 💤');
+  checkAchievements();
 }
 
 // ===== WATER =====
@@ -1724,6 +1835,7 @@ async function addWater() {
   const newCount = todayLogs.length + 1;
   if(newCount === wt) showToast('🎉 Target air minum tercapai!');
   else showToast('💧 Air ditambah');
+  checkAchievements();
 }
 
 // ===== GOALS =====
@@ -1958,7 +2070,88 @@ async function renderStats() {
 }
 
 // ===== SETTINGS =====
+// ===== COUNTDOWN WIDGET =====
+// Data disimpen sebagai array {id, name, date} di KV (bukan store IndexedDB baru,
+// biar ngga perlu bump versi schema DB).
+function daysDiff(dateStr) {
+  const a = new Date(today() + 'T00:00:00');
+  const b = new Date(dateStr + 'T00:00:00');
+  return Math.round((b - a) / 86400000);
+}
+async function getCountdownTargets() {
+  return await KV.get('countdown_targets', []);
+}
+async function saveCountdownTargets(list) {
+  await KV.set('countdown_targets', list);
+}
+async function addCountdownTarget() {
+  const nameEl = el('countdownName'), dateEl = el('countdownDate');
+  const name = nameEl.value.trim();
+  const date = dateEl.value;
+  if (!name || !date) { showToast('Isi nama & tanggal dulu ya'); return; }
+  const list = await getCountdownTargets();
+  list.push({ id: uid(), name, date });
+  await saveCountdownTargets(list);
+  nameEl.value = ''; dateEl.value = '';
+  renderCountdownSettings();
+  renderDashboardCountdowns();
+  showToast('Countdown ditambahkan 🎉');
+}
+async function deleteCountdownTarget(id) {
+  const list = await getCountdownTargets();
+  await saveCountdownTargets(list.filter(t => t.id !== id));
+  renderCountdownSettings();
+  renderDashboardCountdowns();
+}
+async function renderCountdownSettings() {
+  const listEl = el('countdownList'); if (!listEl) return;
+  const list = await getCountdownTargets();
+  if (!list.length) {
+    listEl.innerHTML = '<p style="font-size:.8rem;color:var(--text3);margin-bottom:8px">Belum ada target countdown</p>';
+    return;
+  }
+  const sorted = [...list].sort((a, b) => daysDiff(a.date) - daysDiff(b.date));
+  listEl.innerHTML = sorted.map(t => {
+    const d = daysDiff(t.date);
+    const status = d > 0 ? `${d} hari lagi` : d === 0 ? 'Hari ini! 🎉' : `${Math.abs(d)} hari lalu`;
+    return `
+    <div class="settings-item">
+      <label>${escHtml(t.name)} <small style="color:var(--text3)">(${fmtShort(t.date+'T12:00:00')} · ${status})</small></label>
+      <button class="btn btn-outline btn-sm" data-del-countdown="${t.id}">🗑️</button>
+    </div>`;
+  }).join('');
+  qsa('[data-del-countdown]', listEl).forEach(btn => {
+    btn.addEventListener('click', () => confirm2('Hapus countdown ini?', async () => { await deleteCountdownTarget(btn.dataset.delCountdown); }));
+  });
+}
+async function renderDashboardCountdowns() {
+  const wrap = el('dashCountdowns'); if (!wrap) return;
+  const list = await getCountdownTargets();
+  if (!list.length) {
+    wrap.innerHTML = '<p style="font-size:.8rem;color:var(--text3)">Belum ada target. Tambahin di Settings ya!</p>';
+    return;
+  }
+  const upcoming = list.filter(t => daysDiff(t.date) >= 0).sort((a, b) => daysDiff(a.date) - daysDiff(b.date));
+  const passed = list.filter(t => daysDiff(t.date) < 0);
+  const showList = [...upcoming, ...passed].slice(0, 4); // max 4 biar ngga kepanjangan
+  wrap.innerHTML = showList.map(t => {
+    const d = daysDiff(t.date);
+    const isPast = d < 0;
+    const bigNum = isPast ? '✅' : d === 0 ? '🎉' : d;
+    const subText = isPast ? `${Math.abs(d)} hari lalu` : d === 0 ? 'Hari ini!' : 'hari lagi';
+    return `
+    <div class="dash-countdown-item ${isPast ? 'passed' : ''}">
+      <div class="dash-countdown-num">${bigNum}</div>
+      <div class="dash-countdown-info">
+        <div class="dash-countdown-name">${escHtml(t.name)}</div>
+        <div class="dash-countdown-sub">${subText}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 async function renderSettings() {
+  renderCountdownSettings();
   const nameInput = el('settingName');
   if(nameInput) { nameInput.value = S.settings.name; nameInput.addEventListener('change', () => { S.settings.name = nameInput.value.trim()||'Azhar'; saveSettings(); }); }
   const dm = el('darkModeToggle');
@@ -2203,6 +2396,7 @@ function setupEvents() {
   });
   // SETTINGS
   el('darkModeToggle').addEventListener('change', e => { S.settings.darkMode = e.target.checked; saveSettings(); });
+  el('btnAddCountdown').addEventListener('click', addCountdownTarget);
   el('btnExport').addEventListener('click', exportData);
   el('btnBackupNow').addEventListener('click', async () => {
     await doAutoBackup();
@@ -2310,6 +2504,25 @@ function registerSW() {
 // ===== INIT =====
 async function init() {
   try { await DB.init(); } catch(e) { console.error('DB init failed', e); }
+  // Set versi otomatis dari APP_VERSION — biar teks "Tentang" & meta description
+  // ngga pernah lupa ke-update lagi kayak yang kejadian sebelumnya (nyangkut di v3.3).
+  try {
+    const aboutVerEl = qs('.settings-info strong');
+    if (aboutVerEl && aboutVerEl.nextSibling) aboutVerEl.nextSibling.textContent = ` v${APP_VERSION}`;
+    const metaDesc = qs('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', `Personal Life Management App — v${APP_VERSION}`);
+  } catch(e) { console.error('Version display failed', e); }
+  // Minta browser jadikan storage LifeHub "persistent" biar ngga di-evict
+  // otomatis pas HP kehabisan ruang / browser bebersihin data situs jarang dipake.
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      const isPersisted = await navigator.storage.persisted();
+      if (!isPersisted) {
+        const granted = await navigator.storage.persist();
+        console.log('Storage persist request:', granted ? 'granted' : 'denied');
+      }
+    }
+  } catch(e) { console.error('Storage persist request failed', e); }
   try {
     const savedSettings = await KV.get('lifehub_settings');
     if(savedSettings) S.settings = { ...S.settings, ...savedSettings };
@@ -3011,6 +3224,71 @@ async function checkLevelUp() {
   return leveled;
 }
 
+// ===== ACHIEVEMENTS =====
+const ACHIEVEMENT_LIST = [
+  { id:'streak7',      emoji:'🏆', name:'7 Hari Beruntun',         desc:'Streak habit 7 hari berturut-turut',       color:'#FFD700' },
+  { id:'sleepTarget5', emoji:'🌙', name:'Night Owl → Early Bird',  desc:'5x tidur sesuai target',                    color:'#4A90D9' },
+  { id:'istiqomah7',   emoji:'🕌', name:'Istiqomah',               desc:'Sholat lengkap 5 waktu, 7 hari beruntun',   color:'#43E97B' },
+  { id:'hidrasi30',    emoji:'💧', name:'Hidrasi Master',          desc:'Target air minum tercapai 30 hari',         color:'#00BCD4' },
+  { id:'bossSlayer3',  emoji:'⚔️', name:'Boss Slayer',             desc:'Kalahkan 3 boss',                           color:'#FF6B35' },
+];
+
+async function checkAchievements() {
+  // Pastikan GS terisi state terbaru dari DB, bukan default kosong —
+  // penting karena fungsi ini bisa dipanggil dari halaman selain Game
+  // (misal Habit, Sleep, Sholat, Water) yang belum pernah trigger loadGameState().
+  await loadGameState();
+  const [habits, hLogs, sleepLogs, sholatLogs, waterLogs] = await Promise.all([
+    DB.getAll('habits'), DB.getAll('habitLogs'), DB.getAll('sleepLogs'),
+    DB.getAll('sholatLogs'), DB.getAll('waterLogs')
+  ]);
+
+  const newlyUnlocked = [];
+  const unlock = id => {
+    if (!GS.achievementsUnlocked.includes(id)) {
+      GS.achievementsUnlocked.push(id);
+      newlyUnlocked.push(id);
+    }
+  };
+
+  // 1. Streak habit 7 hari berturut-turut (habit manapun)
+  const maxStreak = habits.reduce((m, h) => Math.max(m, calcStreak(h.id, hLogs)), 0);
+  if (maxStreak >= 7) unlock('streak7');
+
+  // 2. Tidur sesuai target minimal 5x (tidak harus beruntun)
+  const sleepTarget = S.settings.sleepTarget || 8;
+  const sleepHits = sleepLogs.filter(s => s.duration >= sleepTarget).length;
+  if (sleepHits >= 5) unlock('sleepTarget5');
+
+  // 3. Sholat lengkap (5 waktu) 7 hari berturut-turut, dihitung mundur dari hari ini
+  let istiqomahStreak = 0, cur = today();
+  for (let i = 0; i < 400; i++) {
+    const log = sholatLogs.find(s => s.date === cur);
+    const complete = log && Object.values(log.prayers || {}).filter(Boolean).length >= 5;
+    if (complete) { istiqomahStreak++; cur = prevDay(cur); } else break;
+  }
+  if (istiqomahStreak >= 7) unlock('istiqomah7');
+
+  // 4. Target air minum tercapai di 30 hari berbeda (tidak harus beruntun)
+  const waterTarget = S.settings.waterTarget || 8;
+  const waterByDate = {};
+  waterLogs.forEach(w => { waterByDate[w.date] = (waterByDate[w.date] || 0) + 1; });
+  const hidrasiDays = Object.values(waterByDate).filter(c => c >= waterTarget).length;
+  if (hidrasiDays >= 30) unlock('hidrasi30');
+
+  // 5. Kalahkan minimal 3 boss
+  if (GS.bossDefeated.length >= 3) unlock('bossSlayer3');
+
+  if (newlyUnlocked.length > 0) {
+    await saveGameState();
+    newlyUnlocked.forEach(id => {
+      const a = ACHIEVEMENT_LIST.find(x => x.id === id);
+      if (a) showToast(`🏅 Achievement unlocked: ${a.emoji} ${a.name}!`, 3500);
+    });
+  }
+  return newlyUnlocked;
+}
+
 function checkSkillUnlocks() {
   const skillTree = [
     {level:5,  id:'heal',     name:'Healing Light', emoji:'💚', desc:'Pulihkan 30% HP', cost:0, color:'#43E97B'},
@@ -3240,6 +3518,7 @@ async function bossDefeated() {
 
   await saveGameState();
   renderGameUI();
+  checkAchievements();
 }
 
 async function startBattle() {
@@ -3268,6 +3547,7 @@ async function renderGame() {
   await syncStatsFromLifeHub();
   const xpGained = await earnDailyXP();
   if(xpGained > 0) showToast(`+${xpGained} XP dari aktivitas hari ini! ⚡`);
+  await checkAchievements();
   renderGameUI();
 }
 
@@ -3357,6 +3637,23 @@ function renderGameUI() {
       ${GS.battleLog.map(l=>`<div class="battle-log-entry ${l.type}">[${l.time}] ${l.text}</div>`).join('')}
     </div>` : '';
 
+  // Achievements list (pakai style .game-achievement yang sudah ada di style.css)
+  const achievementsHtml = `
+    <div style="margin-top:14px">
+      <div style="font-size:.7rem;font-weight:700;color:var(--text3);margin-bottom:8px">ACHIEVEMENTS (${GS.achievementsUnlocked.length}/${ACHIEVEMENT_LIST.length})</div>
+      ${ACHIEVEMENT_LIST.map(a => {
+        const unlocked = GS.achievementsUnlocked.includes(a.id);
+        return `
+        <div class="game-achievement ${unlocked ? 'achievement-unlocked' : 'achievement-locked'}">
+          <div class="achievement-icon">${unlocked ? a.emoji : '🔒'}</div>
+          <div>
+            <div class="achievement-name">${escHtml(a.name)}</div>
+            <div class="achievement-desc">${escHtml(a.desc)}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
   // Boss progress
   const defeatedCount = GS.bossDefeated.length;
   const totalBoss = BOSS_POOL.length - 1; // exclude demon
@@ -3394,6 +3691,7 @@ function renderGameUI() {
     ${bossHtml}
     ${logHtml}
     ${bossProgressHtml}
+    ${achievementsHtml}
   `;
 }
 
