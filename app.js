@@ -1,9 +1,9 @@
-/* ===== LIFEHUB APP.JS v4.4 ===== */
+/* ===== LIFEHUB APP.JS v4.5 ===== */
 'use strict';
 
 // Single source of truth buat versi app — dipakai buat isi teks "Tentang" &
 // meta description secara otomatis, biar ngga ada lagi tempat yang kelewat update.
-const APP_VERSION = '4.4';
+const APP_VERSION = '4.5';
 
 // ===== DB WRAPPER =====
 const DB = {
