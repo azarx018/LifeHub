@@ -1,9 +1,9 @@
-/* ===== LIFEHUB APP.JS v4.5 ===== */
+/* ===== LIFEHUB APP.JS v4.7 ===== */
 'use strict';
 
 // Single source of truth buat versi app — dipakai buat isi teks "Tentang" &
 // meta description secara otomatis, biar ngga ada lagi tempat yang kelewat update.
-const APP_VERSION = '4.5';
+const APP_VERSION = '4.7';
 
 // ===== DB WRAPPER =====
 const DB = {
@@ -3622,7 +3622,9 @@ function renderGameUI() {
         ${skillsHtml}
         <div class="game-actions" style="margin-top:10px">
           <button class="btn btn-primary" onclick="playerAttack()" style="flex:1">⚔️ Serang</button>
-          <button class="btn btn-outline btn-sm" onclick="useSkill('heal')" ${GS.skills.find(s=>s.id==='heal')?.cooldown>0||!GS.skills.find(s=>s.id==='heal')?'disabled':''}>💚 Heal</button>
+          ${GS.skills.find(s=>s.id==='heal') ? `
+          <button class="btn btn-outline btn-sm" onclick="useSkill('heal')" ${GS.skills.find(s=>s.id==='heal').cooldown>0?'disabled':''}>💚 Heal${GS.skills.find(s=>s.id==='heal').cooldown>0?` (${GS.skills.find(s=>s.id==='heal').cooldown})`:''}</button>` : `
+          <button class="btn btn-outline btn-sm" disabled title="Unlock di Level 5">🔒 Heal</button>`}
         </div>` : `
         <div style="font-size:.78rem;color:var(--text3);margin-bottom:10px">
           Skala: HP ${bossStats.hp} · Damage ~${bossStats.dmg}/turn

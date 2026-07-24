@@ -1,5 +1,5 @@
 // ===== LIFEHUB SERVICE WORKER =====
-const CACHE_NAME = 'lifehub-v4.5';
+const CACHE_NAME = 'lifehub-v4.7';
 const ASSETS = [
   './',
   './index.html',
@@ -12,7 +12,15 @@ const ASSETS = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return Promise.allSettled(ASSETS.map(a => cache.add(a).catch(() => {})));
+      // Fix: cache.add() biasa masih bisa kena HTTP cache browser (bukan cache SW),
+      // jadi file "baru" yang di-fetch pas install bisa aja ternyata masih versi lama
+      // kalau belum expired menurut header cache server. Pake {cache:'reload'} biar
+      // fetch-nya beneran skip HTTP cache dan ambil langsung dari network.
+      return Promise.allSettled(ASSETS.map(a =>
+        fetch(a, { cache: 'reload' }).then(res => {
+          if (res && res.ok) return cache.put(a, res);
+        }).catch(() => {})
+      ));
     }).then(() => self.skipWaiting())
   );
 });
