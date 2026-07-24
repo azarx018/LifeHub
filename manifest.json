@@ -22,5 +22,28 @@
     }
   ],
   "categories": ["productivity", "lifestyle"],
-  "lang": "id"
+  "lang": "id",
+  "shortcuts": [
+    {
+      "name": "Todo",
+      "short_name": "Todo",
+      "description": "Buka daftar Todo",
+      "url": "./index.html?page=todo",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Habit Tracker",
+      "short_name": "Habit",
+      "description": "Buka Habit Tracker",
+      "url": "./index.html?page=habit",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Habit Quest",
+      "short_name": "Game",
+      "description": "Buka Habit Quest (Game)",
+      "url": "./index.html?page=game",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }

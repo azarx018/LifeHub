@@ -1,9 +1,9 @@
-/* ===== LIFEHUB APP.JS v4.7 ===== */
+/* ===== LIFEHUB APP.JS v5.0 ===== */
 'use strict';
 
 // Single source of truth buat versi app — dipakai buat isi teks "Tentang" &
 // meta description secara otomatis, biar ngga ada lagi tempat yang kelewat update.
-const APP_VERSION = '4.7';
+const APP_VERSION = '5.0';
 
 // ===== DB WRAPPER =====
 const DB = {
@@ -825,12 +825,9 @@ function confirm2(text, cb) {
 // ===== POLA & INSIGHT =====
 // Nge-scan data terakhir buat cari pola sederhana (bukan AI, cuma aturan/threshold biasa).
 // Tiap insight punya syarat data minimum biar ngga nge-judge dari sample yang kekecilan.
-async function computeInsights() {
-  const [habits, hLogs, sleepLogs, waterLogs, settingsRows] = await Promise.all([
-    DB.getAll('habits'), DB.getAll('habitLogs'), DB.getAll('sleepLogs'),
-    DB.getAll('waterLogs'), DB.getAll('settings')
-  ]);
-  const moodRows = settingsRows.filter(r => r.id.startsWith('mood_'));
+// Data (habits, hLogs, sleepLogs, waterLogs, moodRows) dikirim dari renderDashboard()
+// biar ngga baca ulang IndexedDB yang sama dua kali dalam satu render.
+async function computeInsights({ habits, hLogs, sleepLogs, waterLogs, moodRows }) {
   const moodScore = { excited:5, happy:4, neutral:3, tired:2, sad:1 };
   const sleepTarget = S.settings.sleepTarget || 8;
   const insights = [];
@@ -913,10 +910,19 @@ async function renderDashboard() {
   updateGreeting();
   updateSkyBackground();
 
+  // Satu batch fetch buat semua data yang dipakai di seluruh fungsi ini —
+  // sebelumnya beberapa store (habits, habitLogs, waterLogs) kebaca dobel:
+  // sekali lewat computeInsights(), sekali lagi lewat body dashboard sendiri.
+  const [habits, hLogs, sleepLogs, waterLogs, todos, sholatLogs, journals, settingsRows] = await Promise.all([
+    DB.getAll('habits'), DB.getAll('habitLogs'), DB.getAll('sleepLogs'), DB.getAll('waterLogs'),
+    DB.getAll('todos'), DB.getAll('sholatLogs'), DB.getAll('journals'), DB.getAll('settings')
+  ]);
+  const moodRows = settingsRows.filter(r => r.id.startsWith('mood_'));
+
   // Pola & Insight
   const diEl = el('dashInsights');
   if (diEl) {
-    const insights = await computeInsights();
+    const insights = await computeInsights({ habits, hLogs, sleepLogs, waterLogs, moodRows });
     if (!insights.length) {
       diEl.innerHTML = '<p style="font-size:.8rem;color:var(--text3)">Belum cukup data buat nemuin pola. Terus catat aktivitas kamu ya!</p>';
     } else {
@@ -937,7 +943,8 @@ async function renderDashboard() {
 
   // Mood
   const todayMoodKey = 'mood_' + today();
-  const savedMood = await KV.get(todayMoodKey);
+  const savedMoodRow = settingsRows.find(r => r.id === todayMoodKey);
+  const savedMood = savedMoodRow ? savedMoodRow.value : null;
   const moodMap = {happy:'😊 Senang',neutral:'😐 Biasa',sad:'😔 Sedih',excited:'🤩 Semangat',tired:'😴 Capek'};
   const dmr = el('dashMoodRow'); const dmt = el('dashMoodText');
   if(dmr) {
@@ -948,8 +955,7 @@ async function renderDashboard() {
   if(dmt) dmt.textContent = savedMood ? moodMap[savedMood] : 'Pilih mood kamu';
 
   // Water
-  const wl = await DB.getAll('waterLogs');
-  const todayWater = wl.filter(w => w.date === today());
+  const todayWater = waterLogs.filter(w => w.date === today());
   const wt = S.settings.waterTarget || 8;
   const wc = todayWater.length;
   const wp = Math.min(100, Math.round(wc/wt*100));
@@ -958,8 +964,6 @@ async function renderDashboard() {
   if(dwt) dwt.textContent = `${wc} / ${wt} gelas`;
 
   // Habits
-  const habits = await DB.getAll('habits');
-  const hLogs = await DB.getAll('habitLogs');
   const dhEl = el('dashHabits');
   if(dhEl) {
     dhEl.innerHTML = '';
@@ -968,7 +972,7 @@ async function renderDashboard() {
       const done = hLogs.some(l => l.habitId===h.id && l.date===today());
       const row = document.createElement('div');
       row.className = 'dash-habit-row';
-      row.innerHTML = `<input type="checkbox" ${done?'checked':''} /><span>${h.icon||'🔥'} ${h.name}</span>`;
+      row.innerHTML = `<input type="checkbox" ${done?'checked':''} /><span>${h.icon||'🔥'} ${escHtml(h.name)}</span>`;
       const cb = qs('input', row);
       cb.addEventListener('change', async () => { await toggleHabitLog(h.id, today()); renderDashboard(); });
       dhEl.appendChild(row);
@@ -976,7 +980,6 @@ async function renderDashboard() {
   }
 
   // Todos — prioritas High→Medium→Low, belum selesai duluan
-  const todos = await DB.getAll('todos');
   const pOrder = {high:0, medium:1, low:2};
   const pendingTodos = todos
     .filter(t => !t.done && !t.archived)
@@ -998,7 +1001,7 @@ async function renderDashboard() {
         row.className = 'dash-todo-row';
         row.innerHTML = `
           <input type="checkbox" ${t.done?'checked':''}/>
-          <span style="font-size:.78rem;${t.done?'text-decoration:line-through;color:var(--text3)':''}">${priorityDot[t.priority]||'⚪'} ${t.title}</span>
+          <span style="font-size:.78rem;${t.done?'text-decoration:line-through;color:var(--text3)':''}">${priorityDot[t.priority]||'⚪'} ${escHtml(t.title)}</span>
         `;
         const cb = qs('input', row);
         cb.addEventListener('change', async () => {
@@ -1013,7 +1016,6 @@ async function renderDashboard() {
   }
 
   // Sholat
-  const sholatLogs = await DB.getAll('sholatLogs');
   const todaySholat = sholatLogs.find(s => s.date === today()) || { date: today(), prayers: {} };
   const PRAYERS_DASH = [{key:'subuh',name:'Subuh'},{key:'dzuhur',name:'Dzuhur'},{key:'ashar',name:'Ashar'},{key:'maghrib',name:'Maghrib'},{key:'isya',name:'Isya'}];
   const dsEl = el('dashSholat');
@@ -1042,7 +1044,6 @@ async function renderDashboard() {
   }
 
   // Sleep
-  const sleepLogs = await DB.getAll('sleepLogs');
   const lastSleep = sleepLogs.filter(s => s.date <= today()).sort((a,b) => b.date.localeCompare(a.date))[0];
   const dsh = el('dashSleepHours');
   if(dsh) dsh.textContent = lastSleep ? lastSleep.duration.toFixed(1) : '—';
@@ -1051,7 +1052,6 @@ async function renderDashboard() {
   // Stats
   const doneTodos = todos.filter(t => t.done).length;
   const doneHabits = hLogs.filter(l => l.date === today()).length;
-  const journals = await DB.getAll('journals');
   const sGrid = el('dashStatsGrid');
   if(sGrid) {
     sGrid.innerHTML = `
@@ -1504,7 +1504,7 @@ async function renderJournal() {
   filtered.forEach(j => {
     const item = document.createElement('div');
     item.className = 'journal-item animate-in';
-    const tags = (j.tags||[]).map(t => `<span class="tag-badge">#${t}</span>`).join('');
+    const tags = (j.tags||[]).map(t => `<span class="tag-badge">#${escHtml(t)}</span>`).join('');
     item.innerHTML = `
       <div class="journal-item-header">
         <div class="journal-item-title">${escHtml(j.title||'Tanpa Judul')}</div>
@@ -1552,7 +1552,7 @@ function renderJournalCalendar(journals) {
 function openJournalView(j) {
   el('journalViewTitle').textContent = j.title || 'Jurnal';
   const moodEmoji = {happy:'😊',neutral:'😐',sad:'😔',excited:'🤩',tired:'😴'};
-  const tags = (j.tags||[]).map(t => `<span class="tag-badge">#${t}</span>`).join(' ');
+  const tags = (j.tags||[]).map(t => `<span class="tag-badge">#${escHtml(t)}</span>`).join(' ');
   el('journalViewBody').innerHTML = `
     <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px">
       <span style="font-size:0.85rem;color:var(--text3)">${fmt(j.date+'T00:00:00')}</span>
@@ -2206,6 +2206,8 @@ async function exportData() {
   const data = {};
   for(const store of DB._stores) { try { data[store] = await DB.getAll(store); } catch{} }
   data.settings = S.settings;
+  data._backupDate = today();
+  data._version = APP_VERSION;
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download=`lifehub_backup_${today()}.json`; a.click();
@@ -2246,7 +2248,7 @@ async function doAutoBackup() {
     for(const store of DB._stores) { try { data[store] = await DB.getAll(store); } catch{} }
     data.settings = S.settings;
     data._backupDate = today();
-    data._version = 'v2.8';
+    data._version = APP_VERSION;
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], {type:'application/json'});
     const url = URL.createObjectURL(blob);
@@ -2550,7 +2552,11 @@ async function init() {
     el('app').classList.remove('hidden');
     setTimeout(() => {
       el('splash').style.display='none';
-      navigateTo('dashboard'); // navigateTo sudah nge-trigger PIXEL.init() sendiri
+      // Baca ?page=... dari URL (dipakai shortcut manifest, misal long-press icon
+      // app -> langsung ke Todo/Habit/Game), fallback ke Dashboard kalau ngga ada.
+      const requestedPage = new URLSearchParams(location.search).get('page');
+      const validPages = ['dashboard','todo','habit','journal','sholat','sleep','water','goals','stats','activity','game','settings'];
+      navigateTo(validPages.includes(requestedPage) ? requestedPage : 'dashboard'); // navigateTo sudah nge-trigger PIXEL.init() sendiri
     }, 500);
   }, 1500);
   registerSW();
@@ -3235,7 +3241,16 @@ const ACHIEVEMENT_LIST = [
   { id:'bossSlayer3',  emoji:'⚔️', name:'Boss Slayer',             desc:'Kalahkan 3 boss',                           color:'#FF6B35' },
 ];
 
-async function checkAchievements() {
+// Wrapper serialisasi: kalau checkAchievements() dipanggil lagi sebelum panggilan
+// sebelumnya selesai (misal toggle 2 habit hampir bersamaan), antrian ini mastiin
+// tiap panggilan nunggu giliran, jadi ngga ada 2 proses load/save GS yang overlap
+// dan berpotensi saling menimpa (race condition).
+let _achievementCheckChain = Promise.resolve();
+function checkAchievements() {
+  _achievementCheckChain = _achievementCheckChain.then(() => _checkAchievementsImpl()).catch(e => console.error('checkAchievements error:', e));
+  return _achievementCheckChain;
+}
+async function _checkAchievementsImpl() {
   // Pastikan GS terisi state terbaru dari DB, bukan default kosong —
   // penting karena fungsi ini bisa dipanggil dari halaman selain Game
   // (misal Habit, Sleep, Sholat, Water) yang belum pernah trigger loadGameState().
@@ -4691,6 +4706,7 @@ const PIXEL = {
     if(this.anim) cancelAnimationFrame(this.anim);
     if(this.rotateTimer) clearInterval(this.rotateTimer);
     this.anim=null;
+    this.rotateTimer=null;
   }
 };
 // Expose game functions to global scope (dipanggil dari onclick HTML)
