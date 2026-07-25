@@ -1,9 +1,9 @@
-/* ===== LIFEHUB APP.JS v5.0 ===== */
+/* ===== LIFEHUB APP.JS v5.1 ===== */
 'use strict';
 
 // Single source of truth buat versi app — dipakai buat isi teks "Tentang" &
 // meta description secara otomatis, biar ngga ada lagi tempat yang kelewat update.
-const APP_VERSION = '5.0';
+const APP_VERSION = '5.1';
 
 // ===== DB WRAPPER =====
 const DB = {
@@ -968,11 +968,15 @@ async function renderDashboard() {
   if(dhEl) {
     dhEl.innerHTML = '';
     if(!habits.length) { dhEl.innerHTML = '<p style="font-size:0.8rem;color:var(--text3)">Belum ada habit</p>'; }
-    habits.slice(0,4).forEach(h => {
+    // Prioritasin habit yang emang jatahnya hari ini, biar habit "libur" ngga
+    // ngisi slot & nutupin habit yang justru harus dikerjain hari ini.
+    const sortedHabits = [...habits].sort((a,b) => (isHabitScheduledOn(b, today())?1:0) - (isHabitScheduledOn(a, today())?1:0));
+    sortedHabits.slice(0,4).forEach(h => {
       const done = hLogs.some(l => l.habitId===h.id && l.date===today());
+      const scheduledToday = isHabitScheduledOn(h, today());
       const row = document.createElement('div');
-      row.className = 'dash-habit-row';
-      row.innerHTML = `<input type="checkbox" ${done?'checked':''} /><span>${h.icon||'🔥'} ${escHtml(h.name)}</span>`;
+      row.className = 'dash-habit-row' + (scheduledToday ? '' : ' off-day');
+      row.innerHTML = `<input type="checkbox" ${done?'checked':''} /><span>${h.icon||'🔥'} ${escHtml(h.name)}</span>${scheduledToday ? '' : '<small class="off-day-label">libur hari ini</small>'}`;
       const cb = qs('input', row);
       cb.addEventListener('change', async () => { await toggleHabitLog(h.id, today()); renderDashboard(); });
       dhEl.appendChild(row);
@@ -1194,16 +1198,17 @@ async function renderHabits() {
   }
   habits.forEach(h => {
     const done = hLogs.some(l => l.habitId===h.id && l.date===S.habitDate);
-    const streak = calcStreak(h.id, hLogs);
+    const streak = calcStreak(h.id, hLogs, h);
     const monday = getMondayOfWeek(S.habitDate);
     const weekDays = getWeekDays(monday);
-    // Hanya hitung hari sejak habit dibuat (createdAt)
-    const effectiveDays = weekDays.filter(ds => !h.createdAt || ds >= h.createdAt);
+    // Hanya hitung hari yang emang jatah (terjadwal) & udah ada habitnya (createdAt)
+    const effectiveDays = weekDays.filter(ds => (!h.createdAt || ds >= h.createdAt) && isHabitScheduledOn(h, ds));
     const weekDone = effectiveDays.filter(ds => hLogs.some(l => l.habitId === h.id && l.date === ds)).length;
-    const effectiveTarget = Math.min(h.target||7, effectiveDays.length) || 1;
+    const effectiveTarget = effectiveDays.length || 1;
     const pct = Math.round(weekDone / effectiveTarget * 100);
     const newHabitNote = h.createdAt && h.createdAt > monday ? ' · habit baru' : '';
     const weekLabel = `${weekDone}/${effectiveTarget} minggu ini${newHabitNote}`;
+    const scheduleLabel = habitDays(h).length === 7 ? 'Setiap hari' : habitDays(h).slice().sort().map(d => DAY_NAMES_SHORT[d]).join(' · ');
     const item = document.createElement('div');
     item.className = 'habit-item animate-in';
     item.innerHTML = `
@@ -1211,7 +1216,7 @@ async function renderHabits() {
         <div class="habit-icon-badge" style="background:${h.color||'#6C63FF'}22">${h.icon||'🔥'}</div>
         <div class="habit-info">
           <div class="habit-name">${escHtml(h.name)}</div>
-          <div class="habit-streak">🔥 ${streak} hari beruntun · Target: ${h.target||7}x/minggu</div>
+          <div class="habit-streak">🔥 ${streak} beruntun · ${scheduleLabel}</div>
         </div>
         <button class="habit-check-btn ${done?'checked':''}" data-id="${h.id}">${done
           ? `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="16" height="16"><path d="M20 6L9 17l-5-5"/></svg>`
@@ -1249,13 +1254,18 @@ async function toggleHabitLog(habitId, date) {
   else { await DB.put('habitLogs', { id: uid(), habitId, date }); }
   checkAchievements();
 }
-function calcStreak(habitId, logs) {
-  const dates = logs.filter(l => l.habitId===habitId).map(l => l.date).sort().reverse();
-  let streak = 0; let cur = today();
-  for(const d of dates) {
-    if(d === cur) { streak++; cur = prevDay(cur); }
-    else if(d === prevDay(cur)) { streak++; cur = prevDay(d); }
-    else break;
+// Streak sekarang sadar jadwal: hari yang bukan jatah habit (misal Selasa buat
+// habit Senin/Rabu/Jumat) dilewatin aja (ngga dihitung, ngga mutusin streak).
+// Streak cuma putus kalau hari YANG TERJADWAL kelewat tanpa dikerjain.
+function calcStreak(habitId, logs, habit) {
+  const days = habitDays(habit);
+  const doneDates = new Set(logs.filter(l => l.habitId===habitId).map(l => l.date));
+  let streak = 0, cur = today();
+  for (let i = 0; i < 730; i++) { // batas 2 tahun, jaga-jaga dari infinite loop
+    if (!days.includes(dayOfWeek(cur))) { cur = prevDay(cur); continue; } // bukan jatah hari ini, skip
+    if (doneDates.has(cur)) { streak++; cur = prevDay(cur); continue; }
+    if (cur === today()) { cur = prevDay(cur); continue; } // hari ini belum berakhir, jangan putus dulu
+    break; // hari terjadwal yang udah lewat & ngga dikerjain -> putus
   }
   return streak;
 }
@@ -1292,6 +1302,55 @@ function prevDay(ds) {
   d.setDate(d.getDate() - 1);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+function nextDay(ds) {
+  const d = new Date(ds + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ===== HABIT SCHEDULING (hari spesifik per minggu) =====
+const DAY_NAMES_SHORT = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+// Dipakai buat migrasi habit lama yang cuma punya `target` (angka) tapi belum
+// punya `days` (array hari spesifik) — kasih pola default yang masuk akal.
+const DEFAULT_DAY_PATTERNS = {
+  1: [1],             // Senin
+  2: [2,5],           // Selasa, Jumat
+  3: [1,3,5],         // Senin, Rabu, Jumat
+  4: [1,2,4,5],       // Senin, Selasa, Kamis, Jumat
+  5: [1,2,3,4,5],     // Senin–Jumat
+  6: [1,2,3,4,5,6],   // Senin–Sabtu
+  7: [0,1,2,3,4,5,6], // Semua hari
+};
+function dayOfWeek(ds) { return new Date(ds + 'T12:00:00').getDay(); }
+function habitDays(h) { return (h && Array.isArray(h.days) && h.days.length) ? h.days : [0,1,2,3,4,5,6]; }
+function isHabitScheduledOn(h, ds) { return habitDays(h).includes(dayOfWeek(ds)); }
+// Hitung berapa hari dalam rentang [startDs, endDs] yang emang jatah/terjadwal
+// buat habit ini — dipakai di Log Aktivitas biar "possible" ngga asal daysBetween.
+function countScheduledDaysInRange(h, startDs, endDs) {
+  if (startDs > endDs) return 0;
+  let count = 0, cur = startDs;
+  for (let i = 0; i < 3660 && cur <= endDs; i++) { // batas ~10 tahun, jaga-jaga
+    if (isHabitScheduledOn(h, cur)) count++;
+    cur = nextDay(cur);
+  }
+  return count;
+}
+// Migrasi satu kali: habit lama (cuma ada `target`, belum ada `days`) dikasih
+// pola hari default berdasarkan target-nya, lalu disimpan biar ngga diulang lagi.
+async function migrateHabitDays() {
+  const habits = await DB.getAll('habits');
+  let changed = false;
+  for (const h of habits) {
+    if (!Array.isArray(h.days)) {
+      h.days = DEFAULT_DAY_PATTERNS[h.target || 7] || [0,1,2,3,4,5,6];
+      h.target = h.days.length;
+      await DB.put('habits', h);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 function renderHabitCalendar(habits, hLogs) {
   renderStreakCalendar(habits, hLogs);
 }
@@ -1331,8 +1390,10 @@ function renderStreakCalendar(habits, hLogs) {
     logMap[l.date].add(l.habitId);
   });
 
-  // Untuk tiap hari, hitung berapa habit yang SUDAH ADA di hari itu
-  const activeHabitsOnDay = (ds) => habits.filter(h => (h.createdAt||'2000-01-01') <= ds).length || 1;
+  // Untuk tiap hari, hitung berapa habit yang emang JATAH hari itu (udah ada +
+  // terjadwal di hari-of-week tsb) — bukan cuma "udah ada", biar habit 3x/minggu
+  // ngga dianggap "gagal" di hari yang emang bukan jadwalnya.
+  const activeHabitsOnDay = (ds) => habits.filter(h => (h.createdAt||'2000-01-01') <= ds && isHabitScheduledOn(h, ds)).length || 1;
 
   // Current streak — hitung mundur dari hari ini
   let currentStreak = 0;
@@ -1438,11 +1499,12 @@ function renderStreakCalendar(habits, hLogs) {
 function openHabitModal(h=null) {
   el('habitEditId').value = h ? h.id : '';
   el('habitName').value = h ? h.name : '';
-  el('habitTarget').value = h ? (h.target||7) : 7;
   el('habitColor').value = h ? (h.color||'#6C63FF') : '#6C63FF';
   const icon = h ? (h.icon||'💧') : '💧';
   el('habitIcon').value = icon;
   qsa('.icon-opt', el('habitIconPicker')).forEach(b => b.classList.toggle('selected', b.dataset.icon===icon));
+  const days = h ? habitDays(h) : [0,1,2,3,4,5,6]; // default habit baru: setiap hari
+  qsa('.day-opt', el('habitDayPicker')).forEach(b => b.classList.toggle('selected', days.includes(parseInt(b.dataset.day))));
   el('habitModalTitle').textContent = h ? 'Edit Habit' : 'Tambah Habit';
   openModal('habitModal');
   setTimeout(() => el('habitName').focus(), 300);
@@ -1450,9 +1512,11 @@ function openHabitModal(h=null) {
 async function saveHabit() {
   const name = el('habitName').value.trim();
   if(!name) { showToast('Nama tidak boleh kosong'); return; }
+  const selectedDays = qsa('.day-opt.selected', el('habitDayPicker')).map(b => parseInt(b.dataset.day));
+  if(!selectedDays.length) { showToast('Pilih minimal 1 hari terjadwal'); return; }
   const id = el('habitEditId').value || uid();
   const existing = await DB.get('habits', id) || {};
-  await DB.put('habits', { ...existing, id, name, icon: el('habitIcon').value, target: parseInt(el('habitTarget').value)||7, color: el('habitColor').value, createdAt: existing.createdAt||today() });
+  await DB.put('habits', { ...existing, id, name, icon: el('habitIcon').value, days: selectedDays, target: selectedDays.length, color: el('habitColor').value, createdAt: existing.createdAt||today() });
   closeModal('habitModal');
   renderHabits();
   showToast('Habit disimpan 🔥');
@@ -2328,6 +2392,10 @@ function setupEvents() {
     qsa('.icon-opt', el('habitIconPicker')).forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected'); el('habitIcon').value = btn.dataset.icon;
   });
+  el('habitDayPicker').addEventListener('click', e => {
+    const btn = e.target.closest('.day-opt'); if(!btn) return;
+    btn.classList.toggle('selected'); // multi-select, beda sama icon picker yang single-select
+  });
   // JOURNAL
   el('btnAddJournal').addEventListener('click', () => openJournalModal());
   el('btnSaveJournal').addEventListener('click', saveJournal);
@@ -2510,6 +2578,9 @@ function registerSW() {
 // ===== INIT =====
 async function init() {
   try { await DB.init(); } catch(e) { console.error('DB init failed', e); }
+  // Migrasi habit lama (yang cuma punya `target` angka) ke sistem hari spesifik
+  // (`days`) — sekali jalan aja, abis itu field `days` selalu ada di tiap habit.
+  try { await migrateHabitDays(); } catch(e) { console.error('migrateHabitDays failed', e); }
   // Set versi otomatis dari APP_VERSION — biar teks "Tentang" & meta description
   // ngga pernah lupa ke-update lagi kayak yang kejadian sebelumnya (nyangkut di v3.3).
   try {
@@ -2652,13 +2723,14 @@ async function renderActivity() {
   // Habit stats per habit
   const habitStats = habits.map(h => {
     const doneLogs = rHLogs.filter(l => l.habitId === h.id);
-    // Hitung hari efektif: sejak habit dibuat, dalam range yang dipilih
+    // Hitung hari efektif: sejak habit dibuat, dalam range yang dipilih, DAN
+    // cuma hari yang emang terjadwal buat habit ini (bukan semua hari kalender).
     const habitStart = h.createdAt && h.createdAt > range.start ? h.createdAt : range.start;
-    const possible = Math.max(1, daysBetween(habitStart, range.end));
+    const possible = Math.max(1, countScheduledDaysInRange(h, habitStart, range.end));
     const pct = possible ? Math.round(doneLogs.length/possible*100) : 0;
     const isNew = h.createdAt && h.createdAt > range.start;
     return { ...h, done: doneLogs.length, possible, pct, isNew };
-  }).sort((a,b) => b.done - a.done);
+  }).sort((a,b) => b.pct - a.pct);
 
   // Sleep stats
   const avgSleep = rSleep.length ? (rSleep.reduce((a,b)=>a+b.duration,0)/rSleep.length).toFixed(1) : 0;
@@ -2878,8 +2950,11 @@ async function generatePDF() {
   const topMood  = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0];
   const habitStats = habits.map(h=>{
     const d=rHLogs.filter(l=>l.habitId===h.id).length;
-    const pct=periodDays?Math.round(d/periodDays*100):0;
-    return{...h,done:d,pct};
+    const habitStart = h.createdAt && h.createdAt > range.start ? h.createdAt : range.start;
+    const possible = Math.max(1, countScheduledDaysInRange(h, habitStart, range.end));
+    const pct=Math.round(d/possible*100);
+    const isNew = h.createdAt && h.createdAt > range.start;
+    return{...h,done:d,possible,pct,isNew};
   }).sort((a,b)=>b.pct-a.pct);
   const goalStats = goals.map(g=>{
     const gm=milestones.filter(m=>m.goalId===g.id);
@@ -3093,14 +3168,16 @@ async function syncStatsFromLifeHub() {
   let maxStreak = 0;
   let hasDeadStreak = false;
   habits.forEach(h => {
-    const streak = calcStreak(h.id, hLogs);
+    const streak = calcStreak(h.id, hLogs, h);
     maxStreak = Math.max(maxStreak, streak);
-    // Cek streak mati (kemarin tidak done, hari sebelumnya done)
+    // Cek streak mati (kemarin tidak done, hari sebelumnya done) — cuma valid
+    // kalau kemarin emang jatah hari terjadwal habit ini, bukan "hari libur"-nya.
     const yday = prevDay(today());
     const dayB4 = prevDay(yday);
+    const ydayScheduled = isHabitScheduledOn(h, yday);
     const doneYday  = hLogs.some(l=>l.habitId===h.id&&l.date===yday);
     const doneDayB4 = hLogs.some(l=>l.habitId===h.id&&l.date===dayB4);
-    if(!doneYday && doneDayB4) hasDeadStreak = true;
+    if(ydayScheduled && !doneYday && doneDayB4) hasDeadStreak = true;
   });
 
   if(maxStreak >= 30)      GS.streakBonus = 1.5;
@@ -3269,7 +3346,7 @@ async function _checkAchievementsImpl() {
   };
 
   // 1. Streak habit 7 hari berturut-turut (habit manapun)
-  const maxStreak = habits.reduce((m, h) => Math.max(m, calcStreak(h.id, hLogs)), 0);
+  const maxStreak = habits.reduce((m, h) => Math.max(m, calcStreak(h.id, hLogs, h)), 0);
   if (maxStreak >= 7) unlock('streak7');
 
   // 2. Tidur sesuai target minimal 5x (tidak harus beruntun)
@@ -3478,7 +3555,7 @@ async function useSkill(skillId) {
     const habits=await DB.getAll('habits');
     const hLogs=await DB.getAll('habitLogs');
     let maxStreak=0;
-    habits.forEach(h=>{ maxStreak=Math.max(maxStreak,calcStreak(h.id,hLogs)); });
+    habits.forEach(h=>{ maxStreak=Math.max(maxStreak,calcStreak(h.id,hLogs,h)); });
     const dmg=maxStreak*5;
     GS.bossHp=Math.max(0,GS.bossHp-dmg);
     logText=`🔥 Streak Burst! Streak ${maxStreak} hari = -${dmg} HP boss!`;
@@ -3838,11 +3915,15 @@ async function generateWeeklyReview(mondayStr) {
   const rWater   = waterLogs.filter(w => inWeek(w.date));
   const rSholat  = sholatLogs.filter(s => inWeek(s.date));
 
-  // Habit stats
+  // Habit stats — "possible" dihitung dari hari yang emang terjadwal buat habit
+  // ini dalam seminggu (bukan hardcode 7), jadi habit 3x/minggu yang kekejar
+  // penuh bakal kebaca 3/3 (100%), bukan 3/7 (43%).
   const habitStats = habits.map(h => {
-    const done = weekDays.filter(d => hLogs.some(l => l.habitId===h.id && l.date===d)).length;
-    return { ...h, done, pct: Math.round(done/7*100) };
-  }).sort((a,b) => b.done - a.done);
+    const effDays = weekDays.filter(d => (!h.createdAt || d >= h.createdAt) && isHabitScheduledOn(h, d));
+    const done = effDays.filter(d => hLogs.some(l => l.habitId===h.id && l.date===d)).length;
+    const possible = effDays.length || 1;
+    return { ...h, done, possible, pct: Math.round(done/possible*100) };
+  }).sort((a,b) => b.pct - a.pct);
 
   // Sholat
   const totalSholat = rSholat.reduce((acc,s) => acc + Object.values(s.prayers||{}).filter(Boolean).length, 0);
@@ -3861,20 +3942,13 @@ async function generateWeeklyReview(mondayStr) {
   rJournals.forEach(j => { if(j.mood && moodCounts[j.mood]!==undefined) moodCounts[j.mood]++; });
   const topMood = Object.entries(moodCounts).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1])[0];
 
-  // Best & worst habit
+  // Best & worst habit (berdasarkan persentase, biar adil buat habit dengan target beda-beda)
   const bestHabit  = habitStats[0];
   const worstHabit = habitStats[habitStats.length-1];
 
-  // Streak terpanjang minggu ini
-  let maxStreakThisWeek = 0;
-  habits.forEach(h => {
-    const streak = weekDays.filter(d => hLogs.some(l=>l.habitId===h.id&&l.date===d)).length;
-    maxStreakThisWeek = Math.max(maxStreakThisWeek, streak);
-  });
-
   // Motivational message berdasarkan performa
   const totalHabitDone = rHLogs.length;
-  const totalHabitPossible = habits.length * 7;
+  const totalHabitPossible = habitStats.reduce((sum,h) => sum + h.possible, 0);
   const habitRate = totalHabitPossible ? totalHabitDone/totalHabitPossible : 0;
   const sholatRate = totalSholat/35;
 
@@ -3919,7 +3993,7 @@ function renderWeeklyReviewModal(review) {
       <div class="wr-habit-bar">
         <div class="wr-habit-fill" style="width:${h.pct}%;background:${h.color||'var(--primary)'}"></div>
       </div>
-      <span class="wr-habit-pct">${h.done}/7</span>
+      <span class="wr-habit-pct">${h.done}/${h.possible}</span>
     </div>`).join('');
 
   const moodChips = Object.entries(review.moodCounts)
@@ -3981,7 +4055,7 @@ function renderWeeklyReviewModal(review) {
     <div class="wr-section">
       <div class="wr-section-title">🔥 Habit Tracker</div>
       ${habitRows}
-      ${review.bestHabit ? `<p style="font-size:.75rem;color:var(--text3);margin-top:6px">⭐ Terbaik: <strong>${review.bestHabit.name}</strong> (${review.bestHabit.done}/7)</p>` : ''}
+      ${review.bestHabit ? `<p style="font-size:.75rem;color:var(--text3);margin-top:6px">⭐ Terbaik: <strong>${review.bestHabit.name}</strong> (${review.bestHabit.done}/${review.bestHabit.possible})</p>` : ''}
     </div>` : ''}
 
     ${moodChips ? `

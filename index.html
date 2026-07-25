@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <title>LifeHub</title>
-  <meta name="description" content="Personal Life Management App — v5.0"/>
+  <meta name="description" content="Personal Life Management App — v5.1"/>
   <meta name="theme-color" content="#6C63FF"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -477,7 +477,7 @@
           <div class="settings-group">
             <div class="settings-group-title">Tentang</div>
             <div class="settings-item settings-info">
-              <p><strong>LifeHub</strong> v5.0</p>
+              <p><strong>LifeHub</strong> v5.1</p>
               <p>Manage Your Own Life</p>
               <p>In Collaboration Azar & ClaudeAI</p>
             </div>
@@ -552,8 +552,18 @@
       </div>
       <input type="hidden" id="habitIcon" value="💧"/>
     </div>
+    <div class="form-group"><label>Hari Terjadwal</label>
+      <div class="day-picker" id="habitDayPicker">
+        <button type="button" class="day-opt" data-day="1">Sen</button>
+        <button type="button" class="day-opt" data-day="2">Sel</button>
+        <button type="button" class="day-opt" data-day="3">Rab</button>
+        <button type="button" class="day-opt" data-day="4">Kam</button>
+        <button type="button" class="day-opt" data-day="5">Jum</button>
+        <button type="button" class="day-opt" data-day="6">Sab</button>
+        <button type="button" class="day-opt" data-day="0">Min</button>
+      </div>
+    </div>
     <div class="form-row">
-      <div class="form-group"><label>Target/Minggu</label><input type="number" id="habitTarget" class="input-field" min="1" max="7" value="7"/></div>
       <div class="form-group"><label>Warna</label><input type="color" id="habitColor" class="input-field color-input" value="#6C63FF"/></div>
     </div>
   </div>

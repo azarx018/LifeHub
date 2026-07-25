@@ -211,6 +211,8 @@ ul{list-style:none}
 .dash-habits-list,.dash-todos-list{display:flex;flex-direction:column;gap:5px}
 .dash-habit-row,.dash-todo-row{display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--text2)}
 .dash-habit-row input[type=checkbox],.dash-todo-row input[type=checkbox]{width:15px;height:15px;accent-color:var(--primary)}
+.dash-habit-row.off-day{opacity:.55}
+.off-day-label{margin-left:auto;font-size:.66rem;color:var(--text3);font-style:italic;flex-shrink:0}
 .dash-insights-list{display:flex;flex-direction:column;gap:8px}
 .dash-insight-row{display:flex;align-items:flex-start;gap:8px;font-size:.8rem;color:var(--text2);background:var(--bg3);border-radius:var(--radius-sm);padding:8px 10px}
 .dash-insight-emoji{font-size:1rem;flex-shrink:0;line-height:1.4}
@@ -643,6 +645,13 @@ textarea.input-field{resize:vertical;min-height:90px}
 }
 .icon-opt.selected{border-color:var(--primary);background:rgba(108,99,255,.1)}
 .icon-opt svg{width:18px;height:18px}
+.day-picker{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+.day-opt{
+  min-width:42px;height:36px;padding:0 8px;border-radius:9px;font-size:.78rem;font-weight:600;
+  display:flex;align-items:center;justify-content:center;color:var(--text2);
+  background:var(--bg3);border:2px solid transparent;transition:all var(--transition);
+}
+.day-opt.selected{border-color:var(--primary);background:rgba(108,99,255,.1);color:var(--primary)}
 
 /* ===== TOAST ===== */
 .toast{
