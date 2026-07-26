@@ -1,9 +1,9 @@
-/* ===== LIFEHUB APP.JS v5.2 ===== */
+/* ===== LIFEHUB APP.JS v5.4 ===== */
 'use strict';
 
 // Single source of truth buat versi app — dipakai buat isi teks "Tentang" &
 // meta description secara otomatis, biar ngga ada lagi tempat yang kelewat update.
-const APP_VERSION = '5.2';
+const APP_VERSION = '5.4';
 
 // ===== DB WRAPPER =====
 const DB = {
@@ -907,6 +907,67 @@ async function computeInsights({ habits, hLogs, sleepLogs, waterLogs, moodRows }
   return insights.slice(0, 3); // max 3 biar ngga penuh
 }
 
+// Widget Sholat di Dashboard — dipisah jadi fungsi sendiri biar toggle 1 doa
+// ngga perlu rebuild SELURUH dashboard (dulu manggil renderDashboard() penuh
+// tiap toggle, jadinya kerasa "jedag-jedug" karena semua section ke-rebuild).
+// Widget Habit di Dashboard — sama kayak Sholat, dipisah biar toggle 1 habit
+// ngga rebuild seluruh dashboard.
+async function renderDashboardHabits(habits, hLogs) {
+  if (!habits) habits = await DB.getAll('habits');
+  if (!hLogs) hLogs = await DB.getAll('habitLogs');
+  const dhEl = el('dashHabits');
+  if(!dhEl) return;
+  dhEl.innerHTML = '';
+  if(!habits.length) { dhEl.innerHTML = '<p style="font-size:0.8rem;color:var(--text3)">Belum ada habit</p>'; }
+  // Prioritasin habit yang emang jatahnya hari ini, biar habit "libur" ngga
+  // ngisi slot & nutupin habit yang justru harus dikerjain hari ini.
+  const sortedHabits = [...habits].sort((a,b) => (isHabitScheduledOn(b, today())?1:0) - (isHabitScheduledOn(a, today())?1:0));
+  sortedHabits.slice(0,4).forEach(h => {
+    const done = hLogs.some(l => l.habitId===h.id && l.date===today());
+    const scheduledToday = isHabitScheduledOn(h, today());
+    const row = document.createElement('div');
+    row.className = 'dash-habit-row' + (scheduledToday ? '' : ' off-day');
+    row.innerHTML = `<input type="checkbox" class="dash-check" ${done?'checked':''} /><span>${h.icon||'🔥'} ${escHtml(h.name)}</span>${scheduledToday ? '' : '<small class="off-day-label">libur hari ini</small>'}`;
+    const cb = qs('input', row);
+    cb.addEventListener('change', async () => {
+      const willBeDone = cb.checked;
+      await toggleHabitLog(h.id, today());
+      if (willBeDone) { cb.classList.add('pop-anim'); setTimeout(() => renderDashboardHabits(), 420); }
+      else { renderDashboardHabits(); }
+    });
+    dhEl.appendChild(row);
+  });
+}
+
+async function renderDashboardSholat(sholatLogs) {
+  if (!sholatLogs) sholatLogs = await DB.getAll('sholatLogs');
+  const todaySholat = sholatLogs.find(s => s.date === today()) || { date: today(), prayers: {} };
+  const PRAYERS_DASH = [{key:'subuh',name:'Subuh'},{key:'dzuhur',name:'Dzuhur'},{key:'ashar',name:'Ashar'},{key:'maghrib',name:'Maghrib'},{key:'isya',name:'Isya'}];
+  const dsEl = el('dashSholat');
+  if(!dsEl) return;
+  dsEl.innerHTML = '';
+  PRAYERS_DASH.forEach(p => {
+    const done = todaySholat.prayers[p.key];
+    const item = document.createElement('div');
+    item.className = `dash-sholat-item ${done?'done':''}`;
+    item.innerHTML = `
+      <svg class="dash-sholat-check" viewBox="0 0 24 24" fill="none" stroke="${done?'#43E97B':'currentColor'}" stroke-width="2.5" width="16" height="16">
+        ${done
+          ? '<path d="M20 6L9 17l-5-5"/>'
+          : '<rect x="3" y="3" width="18" height="18" rx="3"/>'}
+      </svg>
+      <small>${p.name}</small>`;
+    item.addEventListener('click', async () => {
+      todaySholat.prayers[p.key] = !todaySholat.prayers[p.key];
+      if(!todaySholat.id) todaySholat.id = uid();
+      await DB.put('sholatLogs', todaySholat);
+      renderDashboardSholat(); // cuma refresh widget ini doang, bukan seluruh dashboard
+      checkAchievements();
+    });
+    dsEl.appendChild(item);
+  });
+}
+
 async function renderDashboard() {
   updateGreeting();
   updateSkyBackground();
@@ -965,29 +1026,8 @@ async function renderDashboard() {
   if(dwt) dwt.textContent = `${wc} / ${wt} gelas`;
 
   // Habits
-  const dhEl = el('dashHabits');
-  if(dhEl) {
-    dhEl.innerHTML = '';
-    if(!habits.length) { dhEl.innerHTML = '<p style="font-size:0.8rem;color:var(--text3)">Belum ada habit</p>'; }
-    // Prioritasin habit yang emang jatahnya hari ini, biar habit "libur" ngga
-    // ngisi slot & nutupin habit yang justru harus dikerjain hari ini.
-    const sortedHabits = [...habits].sort((a,b) => (isHabitScheduledOn(b, today())?1:0) - (isHabitScheduledOn(a, today())?1:0));
-    sortedHabits.slice(0,4).forEach(h => {
-      const done = hLogs.some(l => l.habitId===h.id && l.date===today());
-      const scheduledToday = isHabitScheduledOn(h, today());
-      const row = document.createElement('div');
-      row.className = 'dash-habit-row' + (scheduledToday ? '' : ' off-day');
-      row.innerHTML = `<input type="checkbox" class="dash-check" ${done?'checked':''} /><span>${h.icon||'🔥'} ${escHtml(h.name)}</span>${scheduledToday ? '' : '<small class="off-day-label">libur hari ini</small>'}`;
-      const cb = qs('input', row);
-      cb.addEventListener('change', async () => {
-        const willBeDone = cb.checked;
-        await toggleHabitLog(h.id, today());
-        if (willBeDone) { cb.classList.add('pop-anim'); setTimeout(() => renderDashboard(), 420); }
-        else { renderDashboard(); }
-      });
-      dhEl.appendChild(row);
-    });
-  }
+  renderDashboardHabits(habits, hLogs);
+
 
   // Todos — prioritas High→Medium→Low, belum selesai duluan
   const pOrder = {high:0, medium:1, low:2};
@@ -1026,32 +1066,7 @@ async function renderDashboard() {
   }
 
   // Sholat
-  const todaySholat = sholatLogs.find(s => s.date === today()) || { date: today(), prayers: {} };
-  const PRAYERS_DASH = [{key:'subuh',name:'Subuh'},{key:'dzuhur',name:'Dzuhur'},{key:'ashar',name:'Ashar'},{key:'maghrib',name:'Maghrib'},{key:'isya',name:'Isya'}];
-  const dsEl = el('dashSholat');
-  if(dsEl) {
-    dsEl.innerHTML = '';
-    PRAYERS_DASH.forEach(p => {
-      const done = todaySholat.prayers[p.key];
-      const item = document.createElement('div');
-      item.className = `dash-sholat-item ${done?'done':''}`;
-      item.innerHTML = `
-        <svg class="dash-sholat-check" viewBox="0 0 24 24" fill="none" stroke="${done?'#43E97B':'currentColor'}" stroke-width="2.5" width="16" height="16">
-          ${done
-            ? '<path d="M20 6L9 17l-5-5"/>'
-            : '<rect x="3" y="3" width="18" height="18" rx="3"/>'}
-        </svg>
-        <small>${p.name}</small>`;
-      item.addEventListener('click', async () => {
-        todaySholat.prayers[p.key] = !todaySholat.prayers[p.key];
-        if(!todaySholat.id) todaySholat.id = uid();
-        await DB.put('sholatLogs', todaySholat);
-        renderDashboard();
-        checkAchievements();
-      });
-      dsEl.appendChild(item);
-    });
-  }
+  renderDashboardSholat(sholatLogs);
 
   // Sleep
   const lastSleep = sleepLogs.filter(s => s.date <= today()).sort((a,b) => b.date.localeCompare(a.date))[0];
