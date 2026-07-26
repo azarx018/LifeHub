@@ -1,9 +1,9 @@
-/* ===== LIFEHUB APP.JS v5.1 ===== */
+/* ===== LIFEHUB APP.JS v5.2 ===== */
 'use strict';
 
 // Single source of truth buat versi app — dipakai buat isi teks "Tentang" &
 // meta description secara otomatis, biar ngga ada lagi tempat yang kelewat update.
-const APP_VERSION = '5.1';
+const APP_VERSION = '5.2';
 
 // ===== DB WRAPPER =====
 const DB = {
@@ -757,7 +757,8 @@ function updateGreeting() {
 function navigateTo(page) {
   const prevPage = S.currentPage;
   qsa('.page').forEach(p => p.classList.remove('active'));
-  const pg = el('page-' + page); if(pg) pg.classList.add('active');
+  const pg = el('page-' + page);
+  if(pg) { void pg.offsetWidth; pg.classList.add('active'); } // reflow paksa biar animasi enter selalu retrigger
   qsa('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   qsa('.bnav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   const titles = { dashboard:'Dashboard', todo:'Todo', habit:'Habit Tracker', journal:'Journal', sholat:'Sholat', sleep:'Sleep Tracker', water:'Water Tracker', goals:'Goals', stats:'Statistik', activity:'Log Aktivitas', game:'⚔️ Habit Quest', settings:'Pengaturan' };
@@ -976,9 +977,14 @@ async function renderDashboard() {
       const scheduledToday = isHabitScheduledOn(h, today());
       const row = document.createElement('div');
       row.className = 'dash-habit-row' + (scheduledToday ? '' : ' off-day');
-      row.innerHTML = `<input type="checkbox" ${done?'checked':''} /><span>${h.icon||'🔥'} ${escHtml(h.name)}</span>${scheduledToday ? '' : '<small class="off-day-label">libur hari ini</small>'}`;
+      row.innerHTML = `<input type="checkbox" class="dash-check" ${done?'checked':''} /><span>${h.icon||'🔥'} ${escHtml(h.name)}</span>${scheduledToday ? '' : '<small class="off-day-label">libur hari ini</small>'}`;
       const cb = qs('input', row);
-      cb.addEventListener('change', async () => { await toggleHabitLog(h.id, today()); renderDashboard(); });
+      cb.addEventListener('change', async () => {
+        const willBeDone = cb.checked;
+        await toggleHabitLog(h.id, today());
+        if (willBeDone) { cb.classList.add('pop-anim'); setTimeout(() => renderDashboard(), 420); }
+        else { renderDashboard(); }
+      });
       dhEl.appendChild(row);
     });
   }
@@ -1150,8 +1156,17 @@ async function renderTodos() {
     `;
     const cb = qs('.todo-check', item);
     cb.addEventListener('change', async () => {
-      t.done = cb.checked; t.doneAt = t.done ? today() : null;
-      await DB.put('todos', t); renderTodos();
+      const willBeDone = cb.checked;
+      t.done = willBeDone; t.doneAt = t.done ? today() : null;
+      await DB.put('todos', t);
+      if (willBeDone) {
+        // Kasih delight kecil pas selesai (ala TickTick) sebelum list di-refresh
+        cb.classList.add('pop-anim');
+        item.classList.add('just-completed');
+        setTimeout(() => renderTodos(), 420);
+      } else {
+        renderTodos();
+      }
     });
     const btns = qsa('.icon-btn', item);
     btns[0].addEventListener('click', () => openTodoModal(t));
@@ -1234,7 +1249,16 @@ async function renderHabits() {
       </div>
     `;
     const checkBtn = qs('.habit-check-btn', item);
-    checkBtn.addEventListener('click', async () => { await toggleHabitLog(h.id, S.habitDate); renderHabits(); });
+    checkBtn.addEventListener('click', async () => {
+      const willBeDone = !done;
+      await toggleHabitLog(h.id, S.habitDate);
+      if (willBeDone) {
+        checkBtn.classList.add('pop-anim');
+        setTimeout(() => renderHabits(), 420);
+      } else {
+        renderHabits();
+      }
+    });
     const editBtns = qsa('.icon-btn', item);
     editBtns[0].addEventListener('click', () => openHabitModal(h));
     editBtns[1].addEventListener('click', () => confirm2('Hapus habit ini?', async () => {
