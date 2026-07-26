@@ -1,9 +1,9 @@
-/* ===== LIFEHUB APP.JS v5.4 ===== */
+/* ===== LIFEHUB APP.JS v5.5 ===== */
 'use strict';
 
 // Single source of truth buat versi app — dipakai buat isi teks "Tentang" &
 // meta description secara otomatis, biar ngga ada lagi tempat yang kelewat update.
-const APP_VERSION = '5.4';
+const APP_VERSION = '5.5';
 
 // ===== DB WRAPPER =====
 const DB = {
@@ -961,7 +961,8 @@ async function renderDashboardSholat(sholatLogs) {
       todaySholat.prayers[p.key] = !todaySholat.prayers[p.key];
       if(!todaySholat.id) todaySholat.id = uid();
       await DB.put('sholatLogs', todaySholat);
-      renderDashboardSholat(); // cuma refresh widget ini doang, bukan seluruh dashboard
+      renderDashboardSholat(); // refresh widget ini
+      renderPrayerCountdown(); // sekalian widget WAKTU SHOLAT biar ngga ketinggalan info (checkmark stale)
       checkAchievements();
     });
     dsEl.appendChild(item);
