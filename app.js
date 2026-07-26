@@ -1,9 +1,9 @@
-/* ===== LIFEHUB APP.JS v5.5 ===== */
+/* ===== LIFEHUB APP.JS v5.6 ===== */
 'use strict';
 
 // Single source of truth buat versi app — dipakai buat isi teks "Tentang" &
 // meta description secara otomatis, biar ngga ada lagi tempat yang kelewat update.
-const APP_VERSION = '5.5';
+const APP_VERSION = '5.6';
 
 // ===== DB WRAPPER =====
 const DB = {
@@ -1091,7 +1091,8 @@ async function renderDashboard() {
   // Donut Chart
   const donutCard = el('dashDonutCard');
   if(donutCard) {
-    const sholatDone = Object.values(todaySholat.prayers || {}).filter(Boolean).length;
+    const todaySholatForDonut = sholatLogs.find(s => s.date === today()) || { prayers: {} };
+    const sholatDone = Object.values(todaySholatForDonut.prayers || {}).filter(Boolean).length;
     const todoActive = todos.filter(t => !t.archived);
     const segments = [
       { label: 'Todo',   value: todoActive.filter(t => t.done).length, total: todoActive.length,  color: '#6C63FF' },
