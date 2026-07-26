@@ -1,9 +1,9 @@
-/* ===== LIFEHUB APP.JS v5.6 ===== */
+/* ===== LIFEHUB APP.JS v5.7 ===== */
 'use strict';
 
 // Single source of truth buat versi app — dipakai buat isi teks "Tentang" &
 // meta description secara otomatis, biar ngga ada lagi tempat yang kelewat update.
-const APP_VERSION = '5.6';
+const APP_VERSION = '5.7';
 
 // ===== DB WRAPPER =====
 const DB = {
@@ -2187,6 +2187,7 @@ function daysDiff(dateStr) {
   const b = new Date(dateStr + 'T00:00:00');
   return Math.round((b - a) / 86400000);
 }
+function daysElapsed(dateStr) { return -daysDiff(dateStr); } // hari sejak tanggal mulai (0 = hari pertama)
 async function getCountdownTargets() {
   return await KV.get('countdown_targets', []);
 }
@@ -2198,8 +2199,10 @@ async function addCountdownTarget() {
   const name = nameEl.value.trim();
   const date = dateEl.value;
   if (!name || !date) { showToast('Isi nama & tanggal dulu ya'); return; }
+  const typeBtn = qs('.day-opt.selected', el('countdownTypePicker'));
+  const type = typeBtn ? typeBtn.dataset.type : 'countdown';
   const list = await getCountdownTargets();
-  list.push({ id: uid(), name, date });
+  list.push({ id: uid(), name, date, type });
   await saveCountdownTargets(list);
   nameEl.value = ''; dateEl.value = '';
   renderCountdownSettings();
@@ -2221,11 +2224,17 @@ async function renderCountdownSettings() {
   }
   const sorted = [...list].sort((a, b) => daysDiff(a.date) - daysDiff(b.date));
   listEl.innerHTML = sorted.map(t => {
-    const d = daysDiff(t.date);
-    const status = d > 0 ? `${d} hari lagi` : d === 0 ? 'Hari ini! 🎉' : `${Math.abs(d)} hari lalu`;
+    let status;
+    if (t.type === 'countup') {
+      const elapsed = daysElapsed(t.date);
+      status = elapsed < 0 ? 'belum mulai' : `hari ke-${elapsed + 1}`;
+    } else {
+      const d = daysDiff(t.date);
+      status = d > 0 ? `${d} hari lagi` : d === 0 ? 'Hari ini! 🎉' : `${Math.abs(d)} hari lalu`;
+    }
     return `
     <div class="settings-item">
-      <label>${escHtml(t.name)} <small style="color:var(--text3)">(${fmtShort(t.date+'T12:00:00')} · ${status})</small></label>
+      <label>${t.type === 'countup' ? '📈' : '⏳'} ${escHtml(t.name)} <small style="color:var(--text3)">(${fmtShort(t.date+'T12:00:00')} · ${status})</small></label>
       <button class="btn btn-outline btn-sm" data-del-countdown="${t.id}">🗑️</button>
     </div>`;
   }).join('');
@@ -2240,10 +2249,24 @@ async function renderDashboardCountdowns() {
     wrap.innerHTML = '<p style="font-size:.8rem;color:var(--text3)">Belum ada target. Tambahin di Settings ya!</p>';
     return;
   }
-  const upcoming = list.filter(t => daysDiff(t.date) >= 0).sort((a, b) => daysDiff(a.date) - daysDiff(b.date));
-  const passed = list.filter(t => daysDiff(t.date) < 0);
+  const upcoming = list.filter(t => t.type==='countup' || daysDiff(t.date) >= 0).sort((a, b) => daysDiff(a.date) - daysDiff(b.date));
+  const passed = list.filter(t => t.type!=='countup' && daysDiff(t.date) < 0);
   const showList = [...upcoming, ...passed].slice(0, 4); // max 4 biar ngga kepanjangan
   wrap.innerHTML = showList.map(t => {
+    if (t.type === 'countup') {
+      const elapsed = daysElapsed(t.date);
+      const notStarted = elapsed < 0;
+      const bigNum = notStarted ? '⏸️' : elapsed + 1;
+      const subText = notStarted ? 'belum mulai' : 'hari berjalan';
+      return `
+      <div class="dash-countdown-item countup">
+        <div class="dash-countdown-num">${bigNum}</div>
+        <div class="dash-countdown-info">
+          <div class="dash-countdown-name">${escHtml(t.name)}</div>
+          <div class="dash-countdown-sub">${subText}</div>
+        </div>
+      </div>`;
+    }
     const d = daysDiff(t.date);
     const isPast = d < 0;
     const bigNum = isPast ? '✅' : d === 0 ? '🎉' : d;
@@ -2512,6 +2535,11 @@ function setupEvents() {
   // SETTINGS
   el('darkModeToggle').addEventListener('change', e => { S.settings.darkMode = e.target.checked; saveSettings(); });
   el('btnAddCountdown').addEventListener('click', addCountdownTarget);
+  el('countdownTypePicker').addEventListener('click', e => {
+    const btn = e.target.closest('.day-opt'); if(!btn) return;
+    qsa('.day-opt', el('countdownTypePicker')).forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected'); // single-select, beda sama day-picker habit yang multi-select
+  });
   el('btnExport').addEventListener('click', exportData);
   el('btnBackupNow').addEventListener('click', async () => {
     await doAutoBackup();

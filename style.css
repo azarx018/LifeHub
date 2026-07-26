@@ -224,6 +224,8 @@ ul{list-style:none}
 .dash-countdown-item.passed{opacity:.6}
 .dash-countdown-num{font-size:1.4rem;font-weight:800;color:var(--primary)}
 .dash-countdown-item.passed .dash-countdown-num{font-size:1.2rem}
+.dash-countdown-item.countup{border:1.5px solid rgba(67,233,123,.35)}
+.dash-countdown-item.countup .dash-countdown-num{color:#2FBE6E}
 .dash-countdown-name{font-size:.72rem;font-weight:600;margin-top:2px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dash-countdown-sub{font-size:.66rem;color:var(--text3)}
 

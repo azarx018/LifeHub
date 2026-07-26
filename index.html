@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <title>LifeHub</title>
-  <meta name="description" content="Personal Life Management App — v5.6"/>
+  <meta name="description" content="Personal Life Management App — v5.7"/>
   <meta name="theme-color" content="#6C63FF"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -468,6 +468,12 @@
           <div class="settings-group">
             <div class="settings-group-title">⏳ Countdown</div>
             <div id="countdownList"></div>
+            <div class="settings-item" style="gap:6px">
+              <div class="day-picker" id="countdownTypePicker">
+                <button type="button" class="day-opt selected" data-type="countdown" style="min-width:auto;padding:0 10px">⏳ Countdown</button>
+                <button type="button" class="day-opt" data-type="countup" style="min-width:auto;padding:0 10px">📈 Count-up</button>
+              </div>
+            </div>
             <div class="settings-item" style="flex-wrap:wrap;gap:8px">
               <input type="text" id="countdownName" class="input-field" placeholder="Nama (misal: 18 Tahun)" style="flex:1;min-width:120px"/>
               <input type="date" id="countdownDate" class="input-sm" style="width:auto"/>
@@ -477,7 +483,7 @@
           <div class="settings-group">
             <div class="settings-group-title">Tentang</div>
             <div class="settings-item settings-info">
-              <p><strong>LifeHub</strong> v5.6</p>
+              <p><strong>LifeHub</strong> v5.7</p>
               <p>Manage Your Own Life</p>
               <p>In Collaboration Azar & ClaudeAI</p>
             </div>
