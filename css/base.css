@@ -81,7 +81,7 @@ ul{list-style:none}
 /* ===== SIDEBAR ===== */
 .sidebar{
   position:fixed;left:0;top:0;
-  width:var(--sidebar-w);height:100vh;
+  width:var(--sidebar-w);height:100vh;height:100dvh;
   background:var(--surface);
   border-right:1px solid var(--border);
   display:flex;flex-direction:column;
@@ -91,6 +91,7 @@ ul{list-style:none}
   overflow-y:auto;
   box-shadow:var(--shadow-md);
   will-change:transform;
+  padding-bottom:env(safe-area-inset-bottom);
 }
 .sidebar.open{transform:translateX(0)}
 .sidebar-header{
