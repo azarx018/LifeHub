@@ -1,0 +1,96 @@
+/* Dipindah dari style.css v5.7 — tidak ada perubahan nilai/aturan,
+   cuma dikelompokkan ulang per halaman. */
+
+/* ===== HABIT ===== */
+.habit-date-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:13px}
+.habit-date-nav button,.sholat-date-nav button{
+  width:30px;height:30px;border-radius:50%;
+  background:var(--bg3);color:var(--text2);font-size:1rem;
+  display:flex;align-items:center;justify-content:center;
+  transition:all var(--transition);
+}
+.habit-date-nav button:active,.sholat-date-nav button:active{background:var(--primary);color:white}
+.habit-date-nav span,.sholat-date-nav span{font-weight:600;font-size:.87rem;color:var(--text2)}
+.habit-list{display:flex;flex-direction:column;gap:9px;margin-bottom:18px}
+.habit-item{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius);padding:13px;transition:border-color var(--transition);
+}
+.habit-item-header{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.habit-icon-badge{
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.habit-icon-badge svg{width:18px;height:18px}
+.habit-info{flex:1}
+.habit-name{font-weight:600;font-size:.88rem;margin-bottom:2px}
+.habit-streak{font-size:.72rem;color:var(--text3)}
+.habit-check-btn{
+  width:34px;height:34px;border-radius:50%;position:relative;
+  background:var(--bg3);color:var(--text3);font-size:.9rem;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--border);transition:all var(--transition);flex-shrink:0;
+}
+.habit-check-btn.checked{background:var(--accent);color:white;border-color:var(--accent)}
+.habit-check-btn.pop-anim{animation:checkPop .4s cubic-bezier(.34,1.56,.64,1)}
+.habit-check-btn.pop-anim::after{
+  content:'';position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--accent);
+  animation:checkPing .5s ease-out forwards;
+}
+@keyframes checkPop{0%{transform:scale(.7)}55%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes checkPing{from{opacity:.6;transform:scale(.8)}to{opacity:0;transform:scale(1.6)}}
+.habit-progress-bar{background:var(--bg3);border-radius:6px;height:4px;overflow:hidden}
+.habit-progress-fill{height:100%;border-radius:6px;transition:width .5s ease}
+.habit-stats-row{display:flex;justify-content:space-between;margin-top:5px}
+.habit-stat{font-size:.7rem;color:var(--text3)}
+.habit-calendar{display:flex;gap:3px;flex-wrap:wrap}
+.hcal-day{
+  width:28px;height:28px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.68rem;background:var(--bg3);color:var(--text3);
+}
+.hcal-day.done{background:var(--primary);color:white}
+.hcal-day.today{outline:2px solid var(--primary);outline-offset:1px}
+
+/* ===== STREAK KALENDER GITHUB-STYLE ===== */
+.habit-streak-wrap{margin-top:18px;padding:14px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.habit-streak-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.habit-streak-legend{display:flex;align-items:center;gap:3px}
+.streak-legend-label{font-size:.65rem;color:var(--text3);margin:0 3px}
+.streak-legend-box{width:11px;height:11px;border-radius:2px;flex-shrink:0}
+
+/* Scroll container — months dan grid scroll bersama */
+.habit-streak-scroll{overflow-x:hidden;padding-bottom:4px;width:100%}
+.habit-streak-inner{display:flex;flex-direction:column;gap:3px;padding-bottom:2px;width:100%}
+.habit-streak-months{display:flex;gap:0;padding-left:30px;margin-bottom:1px;width:100%}
+.streak-month-label{flex:1;font-size:.6rem;color:var(--text3);overflow:visible;white-space:nowrap;min-width:0}
+.habit-streak-grid-wrap{display:flex;gap:4px;align-items:flex-start;width:100%}
+.habit-streak-days-label{display:flex;flex-direction:column;gap:2px;flex-shrink:0}
+.habit-streak-days-label span{height:13px;width:26px;font-size:.58rem;color:var(--text3);line-height:13px;text-align:right}
+.habit-streak-grid{display:flex;gap:2px;align-items:flex-start;flex:1;min-width:0}
+.streak-week-col{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.streak-cell{
+  width:100%;aspect-ratio:1 / 1;border-radius:2px;
+  cursor:pointer;flex-shrink:0;
+  transition:transform .12s ease;
+  min-width:8px;
+}
+.streak-cell:active{transform:scale(1.3)}
+@media(hover:hover){.streak-cell:hover{transform:scale(1.4);z-index:10;position:relative}}
+.streak-cell.level-0{background:var(--bg3)}
+.streak-cell.level-1{background:#c4b5fd}
+.streak-cell.level-2{background:#8b5cf6}
+.streak-cell.level-3{background:#6C63FF}
+.streak-cell.level-4{background:#4c1d95}
+.streak-cell.today{outline:2px solid var(--primary);outline-offset:1px}
+.streak-cell.future{background:transparent;cursor:default}
+.habit-streak-tooltip{
+  display:none;position:fixed;
+  background:var(--text);color:var(--bg);
+  font-size:.72rem;padding:5px 10px;border-radius:8px;
+  pointer-events:none;z-index:200;white-space:nowrap;
+  box-shadow:0 3px 12px rgba(0,0,0,.2);
+}
+.habit-streak-tooltip.visible{display:block}
+.habit-streak-summary{font-size:.76rem;color:var(--text3);margin-top:8px;text-align:center}
+

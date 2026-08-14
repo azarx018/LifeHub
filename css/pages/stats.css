@@ -1,0 +1,20 @@
+/* Dipindah dari style.css v5.7 — tidak ada perubahan nilai/aturan,
+   cuma dikelompokkan ulang per halaman. */
+
+/* ===== STATS ===== */
+.stats-overview{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+.stat-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius);padding:13px;text-align:center;
+}
+.stat-card-val{font-family:'Poppins',sans-serif;font-size:1.7rem;font-weight:700;color:var(--primary)}
+.stat-card-lbl{font-size:.72rem;color:var(--text3);margin-top:3px}
+.stats-charts{display:flex;flex-direction:column;gap:13px}
+.chart-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:15px}
+.chart-title{font-weight:700;font-size:.9rem;margin-bottom:11px}
+.bar-chart{display:flex;align-items:flex-end;gap:5px;height:90px}
+.bar-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar-fill{width:100%;border-radius:4px 4px 0 0;min-height:3px;transition:height .5s ease}
+.bar-lbl{font-size:.62rem;color:var(--text3)}
+.bar-val{font-size:.62rem;color:var(--text2)}
+
