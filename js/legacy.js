@@ -24,7 +24,7 @@ import { renderDashboard } from './features/dashboard.js';
 import { renderHabits, openHabitModal, saveHabit, calcStreak, isHabitScheduledOn, toggleHabitLog, countScheduledDaysInRange } from './features/habit.js';
 import { renderSleep, openSleepModal, saveSleep, endSleepSession } from './features/sleep.js';
 import { renderStats } from './features/stats.js';
-import { renderSettings, saveSettings, exportData, importData, doAutoBackup } from './features/settings.js';
+import { renderSettings, saveSettings, exportData, importData, doAutoBackup, addCountdownTarget } from './features/settings.js';
 // ↓ Sprint 4: Habit Quest RPG (engine, achievements, canvas/UI) sudah
 // dipindah ke js/features/game/.
 import { renderGame, PIXEL } from './features/game/canvas.js';

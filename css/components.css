@@ -82,7 +82,12 @@ textarea.input-field{resize:vertical;min-height:90px}
 .modal-backdrop{
   position:fixed;inset:0;
   background:rgba(0,0,0,.5);backdrop-filter:blur(3px);
-  z-index:400;opacity:0;visibility:hidden;transition:all var(--transition);
+  z-index:400;opacity:0;visibility:hidden;
+  /* Fix v6.0.3: dulu "transition:all" ikut nge-animasiin backdrop-filter tiap modal
+     buka/tutup — itu berat di GPU HP (beda sama opacity/transform yg smooth),
+     bikin kerasa patah-patah. Sekarang cuma opacity+visibility yg dianimasikan,
+     blur-nya muncul instan bareng background. */
+  transition:opacity var(--transition),visibility var(--transition);
 }
 .modal-backdrop.visible{opacity:1;visibility:visible}
 .modal{

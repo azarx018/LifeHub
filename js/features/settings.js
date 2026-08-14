@@ -22,7 +22,7 @@ async function getCountdownTargets() {
 async function saveCountdownTargets(list) {
   await KV.set('countdown_targets', list);
 }
-async function addCountdownTarget() {
+export async function addCountdownTarget() {
   const nameEl = el('countdownName'), dateEl = el('countdownDate');
   const name = nameEl.value.trim();
   const date = dateEl.value;
