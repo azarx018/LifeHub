@@ -3,4 +3,4 @@
 // - state.js (APP_VERSION di objek S / teks "Tentang" & meta description)
 // - sw.js (nama cache, lewat dynamic import)
 // Ganti versi HANYA di sini.
-export const APP_VERSION = '6.0.3';
+export const APP_VERSION = '6.1.0';

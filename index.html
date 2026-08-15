@@ -360,6 +360,24 @@
       <!-- STATS -->
       <section class="page" id="page-stats">
         <div class="stats-overview" id="statsOverview"></div>
+
+        <div class="chart-card trend-card">
+          <div class="trend-header">
+            <div class="chart-title">📈 Tren</div>
+            <select id="trendMetric" class="input-sm trend-select">
+              <option value="habit">Habit</option>
+              <option value="sholat">Sholat</option>
+              <option value="sleep">Tidur</option>
+              <option value="water">Air Minum</option>
+            </select>
+          </div>
+          <div class="filter-row trend-range-row">
+            <button class="filter-btn active" data-weeks="8">8 Minggu</button>
+            <button class="filter-btn" data-weeks="12">3 Bulan</button>
+          </div>
+          <div id="trendChartWrap" class="trend-chart-wrap"></div>
+        </div>
+
         <div class="stats-charts" id="statsCharts"></div>
       </section>
 

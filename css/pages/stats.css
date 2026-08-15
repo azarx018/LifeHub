@@ -18,3 +18,12 @@
 .bar-lbl{font-size:.62rem;color:var(--text3)}
 .bar-val{font-size:.62rem;color:var(--text2)}
 
+/* ===== TREND CHART (v6.1.0) ===== */
+.trend-card{margin-bottom:13px}
+.trend-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.trend-header .chart-title{margin-bottom:0}
+.trend-select{min-width:110px}
+.trend-range-row{margin-bottom:4px}
+.trend-chart-wrap{width:100%;padding-top:4px}
+.trend-chart-wrap svg{display:block}
+

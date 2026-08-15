@@ -46,6 +46,7 @@ const ASSETS = [
   './js/features/stats.js',
   './js/features/settings.js',
   './js/charts/donut.js',
+  './js/charts/line.js',
   './js/features/game/engine.js',
   './js/features/game/achievements.js',
   './js/features/game/canvas.js',

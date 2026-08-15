@@ -15,6 +15,8 @@ export const S = {
   journalSearch: '',
   activityRange: 7,
   activityWeekOffset: 0,
+  trendMetric: 'habit', // Trend chart (Stats) — 'habit' | 'sholat' | 'sleep' | 'water'
+  trendWeeks: 8,
   waterDate: today(), // 0 = minggu ini, -1 = minggu lalu, dst
   settings: { name:'Azhar', darkMode:false, sleepTarget:8, waterTarget:8 },
   todos: [], habits: [], habitLogs: [], journals: [],
