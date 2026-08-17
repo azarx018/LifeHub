@@ -161,7 +161,12 @@ export function applySettings() {
 export async function exportData() {
   const data = {};
   for(const store of DB._stores) { try { data[store] = await DB.getAll(store); } catch{} }
-  data.settings = S.settings;
+  // Fix v6.1.1: dulu ada `data.settings = S.settings` di sini, yang nimpa
+  // array hasil DB.getAll('settings') — padahal store 'settings' itu juga
+  // dipakai KV.set() buat nyimpen countdown_targets, notif_enabled, dst.
+  // Akibatnya semua data KV (termasuk countdown/count-up) ke-skip pas export.
+  // S.settings sendiri udah ikut kebawa otomatis lewat KV key 'lifehub_settings'
+  // di dalam array data.settings di atas, jadi ga perlu ditimpa manual lagi.
   data._backupDate = today();
   data._version = APP_VERSION;
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -174,12 +179,20 @@ export async function importData(file) {
   try {
     const text = await file.text();
     const data = JSON.parse(text);
-    if(data.settings) { S.settings = {...S.settings,...data.settings}; saveSettings(); }
     for(const store of DB._stores) {
       if(data[store] && Array.isArray(data[store])) {
         for(const item of data[store]) { try { await DB.put(store, item); } catch{} }
+      } else if (store === 'settings' && data.settings && !Array.isArray(data.settings)) {
+        // Kompatibilitas file backup LAMA (sebelum fix v6.1.1) — dulu data.settings
+        // isinya cuma {name,darkMode,...} (bukan array KV), jadi countdown_targets
+        // dkk memang udah nggak ada di file lama itu. Tetep restore yg ada aja.
+        S.settings = {...S.settings, ...data.settings}; saveSettings();
       }
     }
+    // Sync S.settings dari KV yg baru diimpor (key 'lifehub_settings'), biar UI
+    // (dark mode, nama, target tidur/air) langsung ke-update tanpa reload manual.
+    S.settings = await KV.get('lifehub_settings', S.settings);
+    applySettings();
     showToast('Data diimpor ✅');
     navigateTo('dashboard');
   } catch(e) { showToast('Error: file tidak valid'); }
@@ -202,7 +215,8 @@ export async function doAutoBackup() {
   try {
     const data = {};
     for(const store of DB._stores) { try { data[store] = await DB.getAll(store); } catch{} }
-    data.settings = S.settings;
+    // Fix v6.1.1: sama kayak exportData() — jangan nimpa data.settings manual,
+    // biar countdown_targets & KV lain ikut ke-backup.
     data._backupDate = today();
     data._version = APP_VERSION;
     const json = JSON.stringify(data, null, 2);
