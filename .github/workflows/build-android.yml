@@ -169,10 +169,12 @@ jobs:
             -keystore "$RUNNER_TEMP/lifehub-release.jks" \
             -alias "$LIFEHUB_KEY_ALIAS" \
             -storepass "$LIFEHUB_KEYSTORE_PASSWORD" \
-            | grep "SHA256:" | head -1 | sed 's/.*SHA256: //')
+            | grep "SHA256:" | head -1 | sed 's/.*SHA256: //' \
+            | tr -d ':' | tr '[:upper:]' '[:lower:]')
 
           APK_SHA256=$("$APKSIGNER" verify --print-certs "$APK" \
-            | grep "SHA-256 digest" | head -1 | sed 's/.*: //')
+            | grep "SHA-256 digest" | head -1 | sed 's/.*: //' \
+            | tr -d ':' | tr '[:upper:]' '[:lower:]')
 
           echo "Keystore cert SHA-256 : $KEYSTORE_SHA256"
           echo "APK cert SHA-256      : $APK_SHA256"

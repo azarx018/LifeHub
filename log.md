@@ -111,6 +111,23 @@ untuk bisa membuka APK hasil download lewat Package Installer Android
   berbeda, keduanya ditandatangani key yang sama, untuk verifikasi
   Android benar-benar menerima update-nya).
 
+### 🐛 Fix: false-positive "signing mismatch" di step verifikasi
+Ditemukan pas run pertama di GitHub Actions: step "Verifikasi APK
+ditandatangani dengan release key yang benar" salah nyimpulin APK TIDAK
+cocok dengan keystore, padahal aslinya SAMA — cuma beda FORMAT string:
+`keytool` nulis SHA-256 pakai colon+uppercase (`A1:BA:84:...`), sementara
+`apksigner --print-certs` nulis tanpa colon+lowercase (`a1ba84...`).
+Perbandingan string apa adanya (`!=`) jadi selalu nganggep beda walau
+value-nya identik. Fix: normalisasi kedua nilai (`tr -d ':' | tr
+'[:upper:]' '[:lower:]'`) sebelum dibandingkan.
+
+### Testing tambahan
+- Normalisasi format SHA-256 ditest manual dengan value asli dari run CI
+  yang gagal (`A1:BA:84:BF:F3:74:7B:CC:AF:5A:C8:D7:AF:C0:9C:83:6A:66:25:
+  08:00:36:FD:4E:88:5E:B1:88:92:2F:F7:7D` vs
+  `a1ba84bff3747bccaf5ac8d7afc09c836a6625080036fd4e885eb188922ff77d`) —
+  setelah normalisasi terbukti identik, fix dikonfirmasi benar.
+
 ---
 
 ## v6.3.2 — PDF fix, icon native, version sync system
