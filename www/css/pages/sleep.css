@@ -1,0 +1,49 @@
+/* Dipindah dari style.css v5.7 — tidak ada perubahan nilai/aturan,
+   cuma dikelompokkan ulang per halaman. */
+
+/* ===== SLEEP ===== */
+.sleep-target-card{margin-bottom:11px}
+.sleep-target-row{display:flex;align-items:center;justify-content:space-between}
+.sleep-target-row span{font-size:1.45rem;font-weight:700;color:var(--primary)}
+.sleep-chart-wrap{margin-bottom:13px}
+.sleep-bar-chart{display:flex;align-items:flex-end;gap:7px;height:110px;padding:0 3px}
+.sleep-bar-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.sleep-bar{width:100%;border-radius:5px 5px 0 0;transition:height .5s ease;min-height:3px}
+.sleep-bar-label{font-size:.62rem;color:var(--text3)}
+.sleep-log-list{display:flex;flex-direction:column;gap:7px}
+.sleep-log-item{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);padding:11px 13px;
+  display:flex;align-items:center;gap:9px;
+}
+.sleep-log-icon{font-size:1.4rem}
+.sleep-log-info{flex:1}
+.sleep-log-dur{font-size:.95rem;font-weight:700;color:var(--primary)}
+.sleep-log-times{font-size:.75rem;color:var(--text3)}
+.sleep-quality-stars{font-size:.82rem}
+.sleep-log-actions{display:flex;gap:5px}
+
+/* ===== WAKE QUALITY MODAL ===== */
+.wake-dur-display{text-align:center;padding:12px;background:var(--bg2);border-radius:var(--radius-sm);margin-bottom:14px}
+.wake-dur-big{font-size:1.5rem;font-weight:700;color:var(--primary)}
+.wake-dur-sub{font-size:.75rem;color:var(--text3);margin-top:2px}
+.wake-quality-prompt{font-size:.85rem;color:var(--text2);margin-bottom:12px;text-align:center}
+.wake-quality-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.wake-quality-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border-radius:var(--radius);border:2px solid var(--border);background:var(--bg2);cursor:pointer;transition:all .2s;color:var(--text)}
+.wake-quality-btn:hover,.wake-quality-btn:active{border-color:var(--primary);background:var(--bg3);transform:translateY(-2px)}
+.wq-emoji{font-size:1.8rem}
+.wq-label{font-size:.73rem;font-weight:600;color:var(--text2)}
+
+/* ===== SLEEP WARNING MODAL ===== */
+.sleep-warn-stat{display:flex;align-items:center;justify-content:center;gap:16px;padding:16px;background:var(--bg2);border-radius:var(--radius);margin-bottom:14px}
+.sleep-warn-stat-item{text-align:center}
+.swsi-val{font-size:2rem;font-weight:800;line-height:1}
+.swsi-unit{font-size:.85rem;font-weight:500;margin-left:2px}
+.swsi-lbl{font-size:.72rem;color:var(--text3);margin-top:2px}
+.sleep-warn-vs{font-size:.8rem;color:var(--text3);font-weight:600}
+.sleep-warn-lack{font-size:.95rem;color:var(--text);text-align:center;margin-bottom:12px;padding:8px;background:rgba(255,107,107,.08);border-radius:var(--radius-sm);border-left:3px solid #FF6B6B}
+.sleep-warn-effects{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.sleep-warn-effect-title{font-size:.75rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.sleep-warn-effect{font-size:.8rem;color:var(--text2);padding:4px 0}
+.sleep-warn-tip{font-size:.78rem;color:var(--text2);background:rgba(108,99,255,.08);border-radius:var(--radius-sm);padding:10px;line-height:1.5;border-left:3px solid var(--primary)}
+

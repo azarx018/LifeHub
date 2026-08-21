@@ -1,0 +1,229 @@
+name: Build & Release Android APK
+
+# Jalan otomatis tiap push ke branch main, ATAU bisa dipicu manual dari tab
+# "Actions" di GitHub (tombol "Run workflow") tanpa perlu push apa-apa.
+#
+# Signing: LifeHub_Android_Signing_GitHub_Actions_Keystore_Spec.md
+# Release : LifeHub_GitHub_Release_APK_Update_Spec.md
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Dibutuhkan supaya GITHUB_TOKEN bawaan job ini bisa bikin GitHub Release +
+# upload asset (default token cuma "read" kalau tidak dinaikkan levelnya).
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java (JDK 21 — dibutuhkan Capacitor 8 / Android Gradle Plugin terbaru)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependency npm
+        run: npm install
+
+      - name: Tambah platform Android (kalau folder android/ belum ada)
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+
+      - name: Sync versi (package.json -> versionName/versionCode Android & www/js/core/version.js)
+        # package.json adalah single source of truth versi app. Step ini
+        # HARUS jalan setelah "cap add android" (butuh android/app/build.gradle
+        # sudah ada) dan SEBELUM build. Lihat scripts/sync-version.js & log.md
+        # untuk penjelasan lengkap kenapa versionCode dihitung deterministik
+        # dari semver, bukan baca-lalu-+1 dari build.gradle lama (folder
+        # android/ ephemeral, digenerate ulang tiap run, gak ada state lama).
+        run: npm run version:sync
+
+      - name: Baca versi app dari package.json
+        id: appver
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Generate app icons dari assets/icon.png
+        # Butuh folder android/ sudah ada (ditulis ke android/app/src/main/res).
+        # Source: assets/icon.png. Kalau file source belum ada di repo, step
+        # ini gagal — pastikan assets/icon.png sudah ke-commit.
+        run: npx capacitor-assets generate --android
+
+      - name: Tambah permission lokasi ke AndroidManifest.xml (kalau belum ada)
+        # @capacitor/geolocation BEDA dari Share/Filesystem/LocalNotifications —
+        # plugin ini gak auto-inject permission lewat manifest merge, HARUS
+        # ditambah manual ke AndroidManifest.xml (lihat dokumentasi resmi
+        # plugin-nya). `cap add android`/`cap sync` TIDAK melakukan ini.
+        # Step ini jalan tiap build supaya permission-nya selalu ada, baik pas
+        # folder android/ baru dibikin dari nol maupun kalau sudah ke-commit.
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
+            sed -i '/<manifest /a\    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-feature android:name="android.hardware.location.gps" android:required="false" />' "$MANIFEST"
+            echo "Permission lokasi ditambahkan."
+          else
+            echo "Permission lokasi sudah ada, skip."
+          fi
+
+      - name: Tambah permission & FileProvider paths untuk in-app APK update installer
+        # Sama seperti geolocation di atas: @capawesome-team/capacitor-file-opener
+        # (dipakai buat buka APK hasil download dengan Android Package Installer,
+        # lihat www/js/core/updateChecker.js) TIDAK auto-inject:
+        #   1) permission REQUEST_INSTALL_PACKAGES (wajib target SDK 26+ untuk
+        #      app yang minta Android menginstall APK lain), dan
+        #   2) resource res/xml/file_paths.xml yang didaftarkan plugin ini lewat
+        #      FileProvider-nya (dokumentasi resmi plugin minta developer yang
+        #      bikin file ini sendiri).
+        # Keduanya HARUS disuntik ulang tiap run karena android/ ephemeral
+        # (sama seperti alasan step permission lokasi di atas).
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "REQUEST_INSTALL_PACKAGES" "$MANIFEST"; then
+            sed -i '/<manifest /a\    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />' "$MANIFEST"
+            echo "Permission REQUEST_INSTALL_PACKAGES ditambahkan."
+          else
+            echo "Permission REQUEST_INSTALL_PACKAGES sudah ada, skip."
+          fi
+
+          XML_DIR="android/app/src/main/res/xml"
+          mkdir -p "$XML_DIR"
+          cat > "$XML_DIR/file_paths.xml" <<'XMLEOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <paths xmlns:android="http://schemas.android.com/apk/res/android">
+              <files-path name="files" path="." />
+              <cache-path name="cache" path="." />
+              <external-files-path name="external-files" path="." />
+              <external-cache-path name="external-cache" path="." />
+              <external-path name="external" path="." />
+          </paths>
+          XMLEOF
+          echo "file_paths.xml ditulis."
+
+      - name: Sync Capacitor (copy www/ + plugin native ke project Android)
+        run: npx cap sync android
+
+      - name: Decode release keystore dari GitHub Secret
+        # KEYSTORE_BASE64 = isi lifehub-release.jks yang sudah di-encode base64.
+        # Ditaruh di $RUNNER_TEMP (bukan di folder project) supaya jelas
+        # terpisah dari source code & gampang dibersihkan step "Cleanup" di
+        # bawah. Keystore TIDAK PERNAH dari repository — selalu direcreate
+        # ulang di sini tiap run, sesuai spec signing bagian 6.
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/lifehub-release.jks"
+
+      - name: Terapkan release signingConfig ke Gradle
+        env:
+          LIFEHUB_KEYSTORE_PATH: ${{ runner.temp }}/lifehub-release.jks
+          LIFEHUB_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          LIFEHUB_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          LIFEHUB_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: node scripts/apply-release-signing.js
+
+      - name: Build APK release (signed, siap didistribusikan lewat GitHub Release)
+        working-directory: android
+        env:
+          LIFEHUB_KEYSTORE_PATH: ${{ runner.temp }}/lifehub-release.jks
+          LIFEHUB_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          LIFEHUB_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          LIFEHUB_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Verifikasi APK ditandatangani dengan release key yang benar
+        # Cegah situasi "Expected: LifeHub Release Key, Actual: key lain" (spec
+        # signing bagian 15). Bandingkan SHA-256 sertifikat DI DALAM APK hasil
+        # build vs SHA-256 sertifikat DI DALAM keystore yang baru didecode —
+        # bukan sekadar "apksigner verify" berhasil (itu cuma bukti APK
+        # ditandatangani dengan VALID, bukan bukti ditandatangani dengan key
+        # yang BENAR).
+        env:
+          LIFEHUB_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          LIFEHUB_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          BUILD_TOOLS_DIR=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
+          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+
+          echo "== apksigner verify =="
+          "$APKSIGNER" verify "$APK"
+
+          KEYSTORE_SHA256=$(keytool -list -v \
+            -keystore "$RUNNER_TEMP/lifehub-release.jks" \
+            -alias "$LIFEHUB_KEY_ALIAS" \
+            -storepass "$LIFEHUB_KEYSTORE_PASSWORD" \
+            | grep "SHA256:" | head -1 | sed 's/.*SHA256: //')
+
+          APK_SHA256=$("$APKSIGNER" verify --print-certs "$APK" \
+            | grep "SHA-256 digest" | head -1 | sed 's/.*: //')
+
+          echo "Keystore cert SHA-256 : $KEYSTORE_SHA256"
+          echo "APK cert SHA-256      : $APK_SHA256"
+
+          if [ "$KEYSTORE_SHA256" != "$APK_SHA256" ]; then
+            echo "::error::APK TIDAK ditandatangani dengan LifeHub release key yang diharapkan. Menghentikan workflow, TIDAK publish release."
+            exit 1
+          fi
+          echo "✓ Signing certificate cocok dengan release keystore."
+
+      - name: Rename APK jadi LifeHub-<version>.apk
+        run: |
+          mkdir -p dist
+          cp "android/app/build/outputs/apk/release/app-release.apk" "dist/LifeHub-${{ steps.appver.outputs.version }}.apk"
+
+      - name: Upload APK sebagai build artifact (untuk debugging run ini)
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifehub-apk
+          path: dist/LifeHub-${{ steps.appver.outputs.version }}.apk
+          if-no-files-found: error
+
+      - name: Ambil changelog versi ini dari log.md (buat isi GitHub Release)
+        id: changelog
+        run: |
+          {
+            echo "body<<CHANGELOG_EOF"
+            awk -v ver="${{ steps.appver.outputs.version }}" '
+              BEGIN{found=0}
+              /^## v/{
+                if(found){exit}
+                if($0 ~ "## v" ver){found=1; print; next}
+                next
+              }
+              found{print}
+            ' log.md
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Buat GitHub Release & upload APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.appver.outputs.version }}
+          name: v${{ steps.appver.outputs.version }}
+          body: ${{ steps.changelog.outputs.body }}
+          files: dist/LifeHub-${{ steps.appver.outputs.version }}.apk
+
+      - name: Cleanup temporary signing files
+        # Jalan SELALU (termasuk kalau step di atas gagal) — jangan sampai
+        # keystore hasil decode tertinggal di workspace runner.
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/lifehub-release.jks"
+          echo "Temporary keystore dibersihkan."

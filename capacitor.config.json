@@ -1,0 +1,13 @@
+{
+  "appId": "com.azrlifehub.app",
+  "appName": "LifeHub",
+  "webDir": "www",
+  "android": {
+    "path": "android"
+  },
+  "plugins": {
+    "CapacitorSQLite": {
+      "androidIsEncryption": false
+    }
+  }
+}

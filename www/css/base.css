@@ -1,0 +1,209 @@
+/* ===== BASE ===== */
+/* Design tokens (:root vars), reset, splash screen, layout kerangka
+   (app shell, sky bg, sidebar, topbar, bottom nav), animasi & scrollbar
+   global, dan responsive breakpoints. Dipindah dari style.css v5.7 —
+   tidak ada perubahan nilai/aturan, cuma dikelompokkan ulang. */
+
+/* ===== LIFEHUB v1.2 ===== */
+:root {
+  --primary: #6C63FF;
+  --primary-light: #8B84FF;
+  --secondary: #FF6584;
+  --accent: #43E97B;
+  --warning: #F9CA24;
+  --danger: #FF6B6B;
+  --bg: #F4F6FF;
+  --bg2: #FFFFFF;
+  --bg3: #EEF0FF;
+  --surface: #FFFFFF;
+  --surface2: #F8F9FF;
+  --border: #E8EAFF;
+  --text: #1a1a2e;
+  --text2: #555577;
+  --text3: #9999BB;
+  --sidebar-w: 256px;
+  --topbar-h: 56px;
+  --bnav-h: 60px;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 2px 12px rgba(108,99,255,0.07);
+  --shadow-md: 0 6px 24px rgba(108,99,255,0.12);
+  --transition: 0.22s cubic-bezier(.4,0,.2,1);
+}
+[data-theme="dark"] {
+  --bg: #0f0f1a;
+  --bg2: #1a1a2e;
+  --bg3: #1e1e30;
+  --surface: #1e1e30;
+  --surface2: #252540;
+  --border: #2e2e48;
+  --text: #e8e8ff;
+  --text2: #aaaacc;
+  --text3: #666688;
+  --shadow: 0 2px 12px rgba(0,0,0,0.35);
+  --shadow-md: 0 6px 24px rgba(0,0,0,0.5);
+}
+
+/* ===== RESET ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;min-height:100vh;-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+button{cursor:pointer;border:none;background:none;font-family:inherit;-webkit-tap-highlight-color:transparent}
+input,textarea,select{font-family:inherit}
+ul{list-style:none}
+
+/* ===== SPLASH ===== */
+.splash{
+  position:fixed;inset:0;
+  background:linear-gradient(135deg,#6C63FF 0%,#FF6584 100%);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;transition:opacity .5s ease,visibility .5s ease;
+}
+.splash.fade-out{opacity:0;visibility:hidden;pointer-events:none}
+.splash-content{text-align:center;color:white}
+.splash-logo svg{width:72px;height:72px;animation:splashPulse 1.5s ease-in-out infinite}
+.splash-title{font-family:'Poppins',sans-serif;font-size:2.2rem;font-weight:700;margin:10px 0 6px}
+.splash-sub{font-size:.9rem;opacity:.85}
+@keyframes splashPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+/* ===== APP ===== */
+.app{position:relative;min-height:100vh}
+.hidden{display:none!important}
+
+/* ===== SKY BG — mobile: header banner, desktop: sidebar bg ===== */
+/* hero celestial & stars injected by JS */
+.hero-celestial{transition:background 1s ease,box-shadow 1s ease}
+.hero-stars .star{position:absolute;background:rgba(255,255,255,.9);border-radius:50%;animation:twinkle var(--d,2s) var(--del,0s) ease-in-out infinite alternate}
+.hero-stars{transition:opacity 1s ease}
+@keyframes twinkle{0%{opacity:.15}100%{opacity:1}}
+
+/* ===== SIDEBAR ===== */
+.sidebar{
+  position:fixed;left:0;top:0;
+  width:var(--sidebar-w);height:100vh;height:100dvh;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  z-index:300;
+  transform:translateX(-100%);
+  transition:transform var(--transition);
+  overflow-y:auto;
+  box-shadow:var(--shadow-md);
+  will-change:transform;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.sidebar.open{transform:translateX(0)}
+.sidebar-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 14px 14px;border-bottom:1px solid var(--border);
+}
+.sidebar-logo{
+  display:flex;align-items:center;gap:9px;
+  font-family:'Poppins',sans-serif;font-weight:700;font-size:1.15rem;color:var(--primary);
+}
+.sidebar-close{
+  width:30px;height:30px;border-radius:50%;
+  background:var(--bg3);color:var(--text2);font-size:.85rem;
+  display:flex;align-items:center;justify-content:center;
+}
+.nav-list{padding:10px 8px;flex:1}
+.nav-item{
+  display:flex;align-items:center;gap:11px;
+  padding:10px 13px;border-radius:var(--radius-sm);
+  color:var(--text2);font-size:.875rem;font-weight:500;
+  transition:all var(--transition);margin-bottom:2px;
+}
+.nav-item:hover{background:var(--bg3);color:var(--primary)}
+.nav-item.active{background:linear-gradient(135deg,rgba(108,99,255,.13),rgba(255,101,132,.07));color:var(--primary);font-weight:600}
+.nav-icon{display:flex;align-items:center;justify-content:center;width:22px;height:22px;flex-shrink:0}
+.nav-icon svg{width:18px;height:18px}
+
+/* ===== OVERLAY ===== */
+.sidebar-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);
+  z-index:299;opacity:0;visibility:hidden;transition:all var(--transition);
+}
+.sidebar-overlay.visible{opacity:1;visibility:visible}
+
+/* ===== MAIN WRAPPER ===== */
+.main-wrapper{min-height:100vh;display:flex;flex-direction:column}
+
+/* ===== TOPBAR ===== */
+.topbar{
+  position:sticky;top:0;height:var(--topbar-h);
+  display:flex;align-items:center;gap:10px;
+  padding:0 14px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  z-index:100;box-shadow:0 1px 6px rgba(108,99,255,.05);
+}
+.menu-btn{
+  width:38px;height:38px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  border-radius:var(--radius-sm);flex-shrink:0;
+}
+.menu-btn span{display:block;width:20px;height:2px;background:var(--text);border-radius:2px;transition:all var(--transition)}
+.topbar-title{flex:1;font-family:'Poppins',sans-serif;font-size:1rem;font-weight:700;color:var(--text)}
+.topbar-actions{display:flex;align-items:center;gap:8px}
+
+/* ===== PAGE CONTAINER ===== */
+.page-container{flex:1;padding:14px 14px calc(72px + env(safe-area-inset-bottom));max-width:860px;margin:0 auto;width:100%}
+.page{display:none}
+.page.active{display:block;animation:pageEnter .32s cubic-bezier(.16,1,.3,1)}
+@keyframes pageEnter{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  height:calc(var(--bnav-h) + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  display:grid;grid-template-columns:repeat(5,1fr);
+  z-index:100;
+}
+.bnav-item{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  color:var(--text3);font-size:.66rem;font-weight:500;
+  transition:color var(--transition);padding:5px 0;position:relative;
+  -webkit-tap-highlight-color:transparent;
+}
+.bnav-item.active{color:var(--primary)}
+.bnav-item::before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%) scaleX(0);
+  width:28px;height:2.5px;background:var(--primary);border-radius:0 0 4px 4px;
+  opacity:0;transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .2s ease;
+}
+.bnav-item.active::before{transform:translateX(-50%) scaleX(1);opacity:1}
+.bnav-item svg{width:22px;height:22px}
+
+/* ===== ANIMATIONS ===== */
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.animate-in{animation:slideIn .2s ease}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ===== RESPONSIVE ===== */
+@media (min-width:768px){
+  .sidebar{transform:translateX(0)!important;position:fixed}
+  .sidebar-close,.sidebar-overlay{display:none}
+  .main-wrapper{margin-left:var(--sidebar-w)}
+  .bottom-nav{display:none}
+  .page-container{padding-bottom:22px}
+  .toast{bottom:22px}
+  .dash-grid{grid-template-columns:1fr 1fr 1fr}
+  .sholat-card{grid-column:span 1}
+  .quote-card,.stats-quick-card{grid-column:span 2}
+  .habit-date-nav button:hover,.sholat-date-nav button:hover{background:var(--primary);color:white}
+  .icon-btn:hover{background:var(--bg);color:var(--text)}
+  .todo-item:hover{border-color:var(--primary)}
+  .journal-item:hover{border-color:var(--primary);box-shadow:var(--shadow)}
+}
+@media (min-width:960px){
+  .dash-grid{grid-template-columns:1fr 1fr 1fr}
+}
+

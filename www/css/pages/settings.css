@@ -1,0 +1,30 @@
+/* Dipindah dari style.css v5.7 — tidak ada perubahan nilai/aturan,
+   cuma dikelompokkan ulang per halaman. */
+
+/* ===== SETTINGS ===== */
+.settings-list{display:flex;flex-direction:column;gap:14px}
+.settings-group{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.settings-group-title{
+  padding:10px 15px;font-size:.72rem;font-weight:700;
+  letter-spacing:.05em;color:var(--text3);text-transform:uppercase;
+  border-bottom:1px solid var(--border);background:var(--surface2);
+}
+.settings-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 15px;border-bottom:1px solid var(--border);
+}
+.settings-item:last-child{border-bottom:none}
+.settings-item label{font-size:.86rem;font-weight:500}
+.settings-info{flex-direction:column;align-items:flex-start;gap:3px}
+.settings-info p{font-size:.82rem;color:var(--text2)}
+
+/* ===== NOTIFICATION SETTINGS ===== */
+.notif-note-item{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:6px}
+.notif-note{font-size:.73rem;color:var(--text3);line-height:1.4}
+.btn-sm{font-size:.78rem;padding:5px 12px;border-radius:var(--radius-sm)}
+
+/* Responsive donut */
+@media (min-width:768px){
+  .donut-card{grid-column:span 1}
+}
+

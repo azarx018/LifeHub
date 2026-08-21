@@ -1,0 +1,170 @@
+/* ===== COMPONENTS ===== */
+/* Elemen UI yang dipakai lintas halaman: card, button, input, toolbar,
+   filter, toggle, modal, toast, empty state, donut chart. Dipindah dari
+   style.css v5.7 — tidak ada perubahan nilai/aturan. */
+
+/* ===== CARDS ===== */
+.card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius);padding:13px;box-shadow:var(--shadow);margin-bottom:11px;
+}
+
+/* ===== BUTTONS ===== */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  padding:9px 16px;border-radius:var(--radius-sm);
+  font-size:.86rem;font-weight:600;transition:all var(--transition);
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--primary),var(--primary-light));
+  color:white;box-shadow:0 3px 10px rgba(108,99,255,.28);
+}
+.btn-primary:active{transform:scale(.97);box-shadow:none}
+.btn-outline{background:transparent;color:var(--primary);border:1.5px solid var(--primary)}
+.btn-outline:active{background:rgba(108,99,255,.08)}
+.btn-danger{background:var(--danger);color:white}
+.btn-sm{padding:5px 11px;font-size:.78rem;border-radius:8px}
+.btn-lg{padding:12px 22px;font-size:.92rem}
+
+/* ===== INPUTS ===== */
+.input-field{
+  width:100%;padding:9px 13px;
+  background:var(--bg3);border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--text);
+  font-size:.88rem;transition:border-color var(--transition);
+}
+.input-field:focus{outline:none;border-color:var(--primary);background:var(--surface);box-shadow:0 0 0 3px rgba(108,99,255,.1)}
+.input-sm{width:68px;padding:5px 9px;border-radius:8px;font-size:.86rem;background:var(--bg3);border:1.5px solid var(--border);color:var(--text)}
+.color-input{padding:5px;height:38px;cursor:pointer}
+textarea.input-field{resize:vertical;min-height:90px}
+
+/* ===== PAGE TOOLBAR ===== */
+.page-toolbar{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:13px}
+.section-title{font-family:'Poppins',sans-serif;font-size:1.05rem;font-weight:700}
+.sub-title{font-size:.88rem;font-weight:600;margin:13px 0 9px;color:var(--text2)}
+.search-box{flex:1}
+.search-input{
+  width:100%;padding:8px 13px;
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);font-size:.86rem;color:var(--text);
+  transition:border-color var(--transition);
+}
+.search-input:focus{outline:none;border-color:var(--primary)}
+
+/* ===== FILTER ROW ===== */
+.filter-row{display:flex;gap:5px;margin-bottom:9px;flex-wrap:wrap}
+.filter-btn{
+  padding:5px 11px;border-radius:20px;
+  font-size:.76rem;font-weight:600;
+  background:var(--bg3);color:var(--text2);
+  border:1.5px solid transparent;transition:all var(--transition);
+}
+.filter-btn.active{background:rgba(108,99,255,.12);color:var(--primary);border-color:rgba(108,99,255,.22)}
+
+/* ===== TOGGLE ===== */
+.toggle{position:relative;display:inline-block;width:44px;height:24px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{
+  position:absolute;inset:0;background:var(--bg3);border-radius:24px;
+  cursor:pointer;transition:all var(--transition);border:2px solid var(--border);
+}
+.toggle-slider::before{
+  content:'';position:absolute;
+  width:16px;height:16px;border-radius:50%;
+  left:2px;top:2px;background:var(--text3);
+  transition:all var(--transition);
+}
+.toggle input:checked + .toggle-slider{background:var(--primary);border-color:var(--primary)}
+.toggle input:checked + .toggle-slider::before{transform:translateX(20px);background:white}
+
+/* ===== MODAL ===== */
+.modal-backdrop{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.5);backdrop-filter:blur(3px);
+  z-index:400;opacity:0;visibility:hidden;
+  /* Fix v6.0.3: dulu "transition:all" ikut nge-animasiin backdrop-filter tiap modal
+     buka/tutup — itu berat di GPU HP (beda sama opacity/transform yg smooth),
+     bikin kerasa patah-patah. Sekarang cuma opacity+visibility yg dianimasikan,
+     blur-nya muncul instan bareng background. */
+  transition:opacity var(--transition),visibility var(--transition);
+}
+.modal-backdrop.visible{opacity:1;visibility:visible}
+.modal{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--surface);border-radius:20px 20px 0 0;
+  z-index:500;transform:translateY(100%);
+  transition:transform var(--transition);
+  max-height:90vh;overflow-y:auto;
+  box-shadow:0 -6px 30px rgba(0,0,0,.18);
+}
+.modal.modal-large{max-height:95vh}
+.modal.open{transform:translateY(0)}
+.modal-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 18px 12px;border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:var(--surface);z-index:1;
+}
+.modal-header h3{font-family:'Poppins',sans-serif;font-size:.98rem;font-weight:700}
+.modal-close{
+  width:30px;height:30px;border-radius:50%;
+  background:var(--bg3);color:var(--text2);font-size:.82rem;
+  display:flex;align-items:center;justify-content:center;
+}
+.modal-body{padding:14px 18px}
+.modal-footer{
+  padding:10px 18px 18px;display:flex;gap:9px;justify-content:flex-end;
+  border-top:1px solid var(--border);
+  position:sticky;bottom:0;background:var(--surface);
+}
+.form-group{margin-bottom:13px}
+.form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:5px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+
+/* Icon Picker */
+.icon-picker{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+.icon-opt{
+  width:36px;height:36px;border-radius:9px;font-size:1.15rem;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg3);border:2px solid transparent;transition:all var(--transition);
+}
+.icon-opt.selected{border-color:var(--primary);background:rgba(108,99,255,.1)}
+.icon-opt svg{width:18px;height:18px}
+.day-picker{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+.day-opt{
+  min-width:42px;height:36px;padding:0 8px;border-radius:9px;font-size:.78rem;font-weight:600;
+  display:flex;align-items:center;justify-content:center;color:var(--text2);
+  background:var(--bg3);border:2px solid transparent;transition:all var(--transition);
+}
+.day-opt.selected{border-color:var(--primary);background:rgba(108,99,255,.1);color:var(--primary)}
+
+/* ===== TOAST ===== */
+.toast{
+  position:fixed;bottom:calc(72px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(12px);
+  background:var(--text);color:var(--bg);
+  padding:9px 18px;border-radius:22px;
+  font-size:.82rem;font-weight:500;
+  z-index:600;opacity:0;transition:all .28s ease;
+  white-space:nowrap;max-width:88vw;
+  box-shadow:0 3px 16px rgba(0,0,0,.2);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ===== EMPTY STATE ===== */
+.empty-state{text-align:center;padding:36px 18px;color:var(--text3)}
+.empty-state .empty-icon{margin-bottom:11px}
+.empty-state .empty-icon svg{width:48px;height:48px;opacity:.5}
+.empty-state p{font-size:.88rem}
+
+/* ===== DONUT CHART ===== */
+.donut-card{grid-column:span 2}
+.donut-wrap{display:flex;align-items:center;gap:14px;margin-top:6px}
+.donut-svg-wrap{flex-shrink:0}
+.donut-svg-wrap svg{display:block}
+.donut-legend{flex:1;display:flex;flex-direction:column;gap:7px;min-width:0}
+.donut-legend-item{display:flex;align-items:center;gap:7px;font-size:.78rem}
+.donut-legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.donut-legend-label{flex:1;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.donut-legend-val{color:var(--text3);font-size:.73rem;flex-shrink:0;font-variant-numeric:tabular-nums}
+.donut-loading{font-size:.8rem;color:var(--text3);padding:20px 0;text-align:center}
+
