@@ -29,6 +29,15 @@ export function navigateTo(page) {
   qsa('.page').forEach(p => p.classList.remove('active'));
   const pg = el('page-' + page);
   if(pg) { void pg.offsetWidth; pg.classList.add('active'); } // reflow paksa biar animasi enter selalu retrigger
+  // FIX PERFORMA (v6.4.9): sekarang scroll ada di .page-container (bukan
+  // dokumen lagi — lihat catatan panjang di base.css), jadi scrollTop-nya
+  // WAJIB direset manual tiap ganti halaman. Sebelumnya ini "otomatis"
+  // kebetulan aman karena halaman non-aktif collapse ke tinggi 0 (display:none)
+  // di dalam dokumen yang jadi konteks scroll bareng — sekarang .page-container
+  // punya scrollTop sendiri yang statenya dipertahankan browser walau
+  // kontennya ganti, jadi perlu direset eksplisit biar halaman baru selalu
+  // mulai dari atas.
+  const pc = el('pageContainer'); if(pc) pc.scrollTop = 0;
   qsa('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   qsa('.bnav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   const titles = { dashboard:'Dashboard', todo:'Todo', habit:'Habit Tracker', journal:'Journal', sholat:'Sholat', sleep:'Sleep Tracker', water:'Water Tracker', goals:'Goals', stats:'Statistik', activity:'Log Aktivitas', game:'⚔️ Habit Quest', settings:'Pengaturan' };

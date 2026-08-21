@@ -9,3 +9,4 @@ dist/
 !keystore/debug.keystore
 *.jks
 .DS_Store
+log.md
