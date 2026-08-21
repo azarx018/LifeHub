@@ -121,12 +121,33 @@ Perbandingan string apa adanya (`!=`) jadi selalu nganggep beda walau
 value-nya identik. Fix: normalisasi kedua nilai (`tr -d ':' | tr
 '[:upper:]' '[:lower:]'`) sebelum dibandingkan.
 
+### 🐛 Fix: dependency version salah untuk plugin FileOpener
+Ditemukan pas testing "Iya, Update" di device: selalu keluar toast
+"Update gagal. Silakan coba lagi nanti." `package.json` sempat nulis
+`@capawesome-team/capacitor-file-opener` versi `^7.0.0` — itu versi buat
+Capacitor 7 (status "Deprecated" di tabel compatibility resmi plugin ini),
+sementara project ini pakai **Capacitor 8**. `npm install` narik 7.0.1,
+yang native bridge-nya nggak kompatibel sama Capacitor 8, jadi plugin
+`FileOpener` gagal kedaftar dengan benar di sisi native Android → setiap
+panggilan `FileOpener.openFile()` dari JS gagal. Fix: ganti ke
+`^8.0.0` (rilis terbaru kompatibel: `8.0.1`, sesuai tabel compatibility
+resmi "8.x.x ⟷ Capacitor >=8.x.x").
+
 ### Testing tambahan
 - Normalisasi format SHA-256 ditest manual dengan value asli dari run CI
   yang gagal (`A1:BA:84:BF:F3:74:7B:CC:AF:5A:C8:D7:AF:C0:9C:83:6A:66:25:
   08:00:36:FD:4E:88:5E:B1:88:92:2F:F7:7D` vs
   `a1ba84bff3747bccaf5ac8d7afc09c836a6625080036fd4e885eb188922ff77d`) —
   setelah normalisasi terbukti identik, fix dikonfirmasi benar.
+- Versi plugin FileOpener dicek ulang terhadap tabel compatibility resmi
+  di capawesome.io (per Agustus 2026): `8.x.x` = Capacitor 8 (Active
+  support), `7.x.x` = Capacitor 7 (Deprecated). `^7.0.0` di package.json
+  adalah salah — dikonfirmasi via dokumentasi resmi & npm registry
+  (versi terbaru dikonfirmasi `8.0.1`, dirilis ~4 bulan sebelum Agustus
+  2026).
+- **Belum dites ulang end-to-end** setelah fix versi ini (butuh build +
+  install v6.4.1 baru buat konfirmasi tombol "Iya, Update" beneran jalan
+  sampai keluar installer Android).
 
 ---
 
