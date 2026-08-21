@@ -61,12 +61,68 @@ export async function generatePDF() {
     return{...g,pct};
   });
 
+  const prayerNames = {subuh:'Subuh',dzuhur:'Dzuhur',ashar:'Ashar',maghrib:'Maghrib',isya:'Isya'};
+
+  // ===== NATIVE (APK): render PDF langsung lewat jsPDF (teks vektor asli) =====
+  // Cabang ini dipisah SEBELUM bangun string `html` di bawah — karena native
+  // dan web sekarang pakai renderer yang beda total (lihat komentar panjang
+  // di renderReportNative), jadi gak perlu bangun HTML yang gak dipakai.
+  if (await isNativeApp()) {
+    const moodBreakdown = Object.entries(moodCounts).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1])
+      .map(([m,c])=>`${moodEmoji[m]} ${moodLabel[m]}: ${c}x`);
+    const stats = {
+      name, rangeLabel,
+      startFmt: fmt(range.start+'T12:00:00'), endFmt: fmt(range.end+'T12:00:00'),
+      printedFmt: fmt(today()+'T12:00:00'),
+      generatedAt: new Date().toLocaleString('id-ID'),
+      summaryText: `Selama ${periodDays} hari, kamu berhasil menyelesaikan ${rTodos.length} tugas, `
+        + `melaksanakan sholat ${totalSholatDone} waktu dari ${totalSholatPossible} waktu yang ada (${sholatPct}%), `
+        + `dan menulis jurnal sebanyak ${rJournals.length} kali. Rata-rata tidur ${avgSleep} jam/malam dan minum `
+        + `${avgWater} gelas/hari.` + (topMood&&topMood[1]>0 ? ` Mood terbanyak: ${moodLabel[topMood[0]]} ${moodEmoji[topMood[0]]}.` : ''),
+      todo: {
+        total: rTodos.length,
+        high: rTodos.filter(t=>t.priority==='high').length,
+        medium: rTodos.filter(t=>t.priority==='medium').length,
+        low: rTodos.filter(t=>t.priority==='low').length,
+        rows: rTodos.map(t=>[t.title, {high:'High',medium:'Medium',low:'Low'}[t.priority]||'-', fmtShort((t.doneAt||today())+'T12:00:00'), t.category||'-'])
+      },
+      sholat: {
+        totalDone: totalSholatDone, totalPossible: totalSholatPossible, pct: sholatPct,
+        perfectDays: rSholat.filter(s=>Object.values(s.prayers||{}).filter(Boolean).length===5).length,
+        rows: Object.entries(prayerNames).map(([k,n])=>{
+          const cnt = rSholat.filter(s=>s.prayers&&s.prayers[k]).length;
+          const pct2 = periodDays?Math.round(cnt/periodDays*100):0;
+          return [n, `${cnt}/${periodDays} hari`, `${pct2}%`];
+        })
+      },
+      habits: habitStats.map(h=>({ name: h.name, isNew: h.isNew, done: h.done, possible: h.possible, pct: h.pct })),
+      sleep: {
+        avg: avgSleep, days: rSleep.length,
+        enough: rSleep.filter(s=>s.duration>=(S.settings.sleepTarget||8)).length,
+        target: S.settings.sleepTarget||8
+      },
+      water: {
+        avg: avgWater, total: rWater.length,
+        hitTarget: Object.values(waterDays).filter(c=>c>=parseInt(S.settings.waterTarget||8)).length,
+        target: S.settings.waterTarget||8
+      },
+      journal: {
+        count: rJournals.length,
+        consistency: periodDays?Math.round(rJournals.length/periodDays*100):0,
+        topMoodEmoji: topMood&&topMood[1]>0 ? moodEmoji[topMood[0]] : null,
+        moodBreakdown
+      },
+      goals: goalStats.map(g=>({ title: g.title, pct: g.pct, milestoneDone: g.milestoneDone, milestoneCount: g.milestoneCount, deadline: g.deadline?fmtShort(g.deadline+'T12:00:00'):null }))
+    };
+    await renderReportNative(stats, `LifeHub_${rangeLabel.replace(/\s+/g,'_')}_${today()}.pdf`);
+    return;
+  }
+
   const progressBar = (pct,color='#6C63FF') =>
     `<div style="background:#eee;border-radius:4px;height:8px;overflow:hidden;margin:4px 0">
       <div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div>
     </div>`;
 
-  const prayerNames = {subuh:'Subuh',dzuhur:'Dzuhur',ashar:'Ashar',maghrib:'Maghrib',isya:'Isya'};
   const sholatRows = Object.entries(prayerNames).map(([k,n])=>{
     const cnt = rSholat.filter(s=>s.prayers&&s.prayers[k]).length;
     const pct2= periodDays?Math.round(cnt/periodDays*100):0;
@@ -195,23 +251,9 @@ export async function generatePDF() {
 </body>
 </html>`;
 
-  // ===== Dual-mode output =====
-  // WEB/PWA: trik lama tetap dipakai (window.open + window.print, user pilih
-  // "Save as PDF" di dialog print browser) — ini sudah jalan normal di
-  // browser, TIDAK diubah.
-  //
-  // NATIVE (APK): window.open('', '_blank') & win.print() TIDAK didukung
-  // WebView Android (gak ada popup, gak ada dialog print sistem). Jadi di
-  // native, HTML report yang SAMA PERSIS di-render ke PDF beneran secara
-  // lokal (pakai jsPDF + html2canvas, di-load sekali dari CDN saat
-  // dibutuhkan), lalu file PDF-nya disimpan & langsung dibuka native Share
-  // Sheet (lewat saveBinaryFile — sama seperti fileExport.js) supaya user
-  // bisa pilih sendiri mau simpan/kirim ke mana.
-  if (await isNativeApp()) {
-    await renderHtmlToPdfNative(html, `LifeHub_${rangeLabel.replace(/\s+/g,'_')}_${today()}.pdf`);
-    return;
-  }
-
+  // ===== WEB/PWA: trik lama tetap dipakai =====
+  // window.open + window.print, user pilih "Save as PDF" di dialog print
+  // browser — ini sudah jalan normal di browser, TIDAK diubah.
   const win = window.open('', '_blank');
   if(!win) { showToast('Aktifkan popup di browser untuk download PDF'); return; }
   win.document.write(html);
@@ -220,11 +262,29 @@ export async function generatePDF() {
   showToast('PDF siap! Pilih "Save as PDF" saat print 📄');
 }
 
-// ===== Helper khusus native: render string HTML -> file PDF beneran =====
+// ===== Native (APK): generate PDF langsung lewat jsPDF, TANPA html2canvas =====
+//
+// RIWAYAT: versi sebelumnya render HTML report ke iframe tersembunyi lalu
+// screenshot pakai html2canvas (`doc.html()`). Setelah diperbaiki soal
+// windowHeight (lihat log.md v6.3.2), hasilnya MASIH kosong/blank di WebView
+// Android — cuma keluar warna solid tanpa teks/tabel. html2canvas memang
+// dikenal rapuh di WebView (font loading, canvas security, layout timing
+// yang beda dari Chrome desktop) dan gak bisa didiagnosis lebih jauh tanpa
+// akses langsung ke device untuk debug.
+//
+// FIX ARSITEKTURAL: skip html2canvas SEPENUHNYA. PDF sekarang digambar
+// LANGSUNG pakai jsPDF API (doc.text, doc.rect, dst) + plugin jsPDF-AutoTable
+// buat semua tabel — bukan screenshot dari HTML. Konsekuensinya:
+//   - Jauh lebih reliable di WebView (murni vector drawing, gak bergantung
+//     canvas rendering/font loading yang tricky).
+//   - Hasil PDF lebih ringan & teksnya bisa di-select/di-copy (bukan gambar).
+//   - Konsekuensi lain: layout PDF native jadi TIDAK 100% identik pixel-by-
+//     pixel dengan versi web (yang masih html2print based) — tapi kontennya
+//     (semua angka/tabel/section) sama persis, cuma cara gambarnya beda.
 
 let _pdfLibsPromise = null;
 
-// jsPDF + html2canvas di-load lazy dari CDN (cuma sekali, cuma kalau APK
+// jsPDF + jsPDF-AutoTable di-load lazy dari CDN (cuma sekali, cuma kalau APK
 // beneran generate PDF) — bukan di index.html, biar gak nambah beban load
 // tiap buka app. Konsekuensinya: generate PDF pertama kali butuh koneksi
 // internet buat ambil kedua library ini (browser/WebView otomatis cache
@@ -263,14 +323,14 @@ function loadPdfLibs() {
   _pdfLibsPromise = (async () => {
     try {
       await loadWithFallback(
-        'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-        'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
-        () => !!window.html2canvas
-      );
-      await loadWithFallback(
         'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js',
         'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',
         () => !!window.jspdf
+      );
+      await loadWithFallback(
+        'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
+        'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',
+        () => !!(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable)
       );
     } catch (e) {
       _pdfLibsPromise = null; // reset supaya bisa di-retry, bukan gagal permanen
@@ -280,74 +340,178 @@ function loadPdfLibs() {
   return _pdfLibsPromise;
 }
 
-async function renderHtmlToPdfNative(html, filename) {
+async function renderReportNative(stats, filename) {
   showToast('⏳ Menyiapkan PDF...', 2000);
   try {
     await loadPdfLibs();
-
-    // Render HTML report di iframe tersembunyi (bukan div langsung di
-    // document utama) supaya CSS report (yang punya `*{margin:0;padding:0}`
-    // dkk) gak bentrok/ke-leak ke tampilan app LifeHub yang sedang aktif.
-    const iframe = document.createElement('iframe');
-    // NOTE (fix "PDF kosong/blank"): sebelumnya height iframe di-hardcode
-    // '1px' cuma buat nyembunyiin secara visual (posisinya juga udah
-    // di-geser ke left:-9999px, jadi height kecil sebenernya gak perlu).
-    // Masalahnya: html2canvas kalau gak dikasih `windowHeight` eksplisit,
-    // defaultnya ngambil dari `iframe.contentWindow.innerHeight` — yang
-    // ikut ke-pengaruh CSS height iframe itu sendiri. Jadi height:1px bikin
-    // html2canvas mikir "window" report ini cuma tinggi 1px, hasil capture-nya
-    // ke-crop jadi nyaris kosong (docs resmi html2canvas juga bilang wajib
-    // set windowWidth/windowHeight manual kalau elemennya di luar viewport
-    // biasa: https://html2canvas.hertzen.com/faq). Fix: iframe di-resize ke
-    // tinggi konten asli (scrollHeight) SEBELUM di-capture, dan windowHeight
-    // di-set eksplisit juga ke html2canvas sebagai jaga-jaga ganda.
-    iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;height:1px;border:0;overflow:hidden';
-    document.body.appendChild(iframe);
-    iframe.contentDocument.open();
-    iframe.contentDocument.write(html);
-    iframe.contentDocument.close();
-
-    await new Promise(resolve => {
-      if (iframe.contentDocument.readyState === 'complete') resolve();
-      else iframe.onload = resolve;
-    });
-
-    // Ukur tinggi konten SEBENARNYA (bukan tinggi iframe yang sengaja di-1px-in),
-    // lalu resize iframe-nya biar sesuai — supaya layout di dalam iframe
-    // (dan window.innerHeight-nya) merepresentasikan konten asli, bukan 1px.
-    const contentHeight = Math.max(
-      iframe.contentDocument.body.scrollHeight,
-      iframe.contentDocument.documentElement.scrollHeight,
-      1
-    );
-    iframe.style.height = contentHeight + 'px';
-
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'pt', 'a4');
-    await new Promise((resolve, reject) => {
-      doc.html(iframe.contentDocument.body, {
-        callback: () => resolve(),
-        html2canvas: {
-          scale: 0.75, useCORS: true,
-          windowWidth: 800, windowHeight: contentHeight, // <- fix utama
-          height: contentHeight
-        },
-        width: 595,        // lebar halaman A4 dalam pt, dikurangi margin
-        windowWidth: 800,
-        margin: [20, 20, 20, 20],
-        x: 0, y: 0
-      });
-      // jsPDF .html() tidak selalu reject saat gagal — kasih timeout jaga-jaga.
-      setTimeout(() => reject(new Error('Timeout render PDF')), 20000);
-    });
 
-    document.body.removeChild(iframe);
+    const PAGE_W = doc.internal.pageSize.getWidth();
+    const PAGE_H = doc.internal.pageSize.getHeight();
+    const MARGIN = 40;
+    const USABLE_W = PAGE_W - MARGIN * 2;
+    const PURPLE = [108, 99, 255];
+    const PURPLE_BG = [240, 238, 255];
+    const BOX_BG = [245, 246, 255];
+    const GRAY = [136, 136, 136];
+    const DARK = [26, 26, 46];
+
+    let y = MARGIN;
+
+    function ensureSpace(h) {
+      if (y + h > PAGE_H - MARGIN) { doc.addPage(); y = MARGIN; }
+    }
+
+    function sectionTitle(emoji, title) {
+      ensureSpace(28);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...PURPLE);
+      doc.text(`${emoji} ${title}`, MARGIN, y);
+      doc.setDrawColor(...PURPLE); doc.setLineWidth(1.2);
+      doc.line(MARGIN, y + 4, PAGE_W - MARGIN, y + 4);
+      y += 20;
+    }
+
+    function statGrid(items) {
+      const boxH = 40, gap = 8;
+      ensureSpace(boxH + 14);
+      const boxW = (USABLE_W - gap * (items.length - 1)) / items.length;
+      items.forEach((it, i) => {
+        const bx = MARGIN + i * (boxW + gap);
+        doc.setFillColor(...BOX_BG);
+        doc.roundedRect(bx, y, boxW, boxH, 4, 4, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(...PURPLE);
+        doc.text(String(it.val), bx + boxW / 2, y + 18, { align: 'center' });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+        doc.text(it.label, bx + boxW / 2, y + 30, { align: 'center', maxWidth: boxW - 8 });
+      });
+      y += boxH + 14;
+    }
+
+    function emptyNote(text) {
+      ensureSpace(18);
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(...GRAY);
+      doc.text(text, MARGIN, y);
+      y += 20;
+    }
+
+    function table(head, body) {
+      doc.autoTable({
+        head: [head], body, startY: y,
+        margin: { left: MARGIN, right: MARGIN },
+        styles: { font: 'helvetica', fontSize: 8.5, textColor: DARK, cellPadding: 5 },
+        headStyles: { fillColor: BOX_BG, textColor: [51, 51, 51], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [252, 252, 255] },
+        theme: 'grid'
+      });
+      y = doc.lastAutoTable.finalY + 16;
+    }
+
+    // ===== Header =====
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...PURPLE);
+    doc.text('LifeHub — Log Aktivitas', MARGIN, y);
+    y += 18;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GRAY);
+    doc.text(
+      `Nama: ${stats.name}   |   Periode: ${stats.rangeLabel} (${stats.startFmt} — ${stats.endFmt})   |   Dicetak: ${stats.printedFmt}`,
+      MARGIN, y, { maxWidth: USABLE_W }
+    );
+    y += 26;
+
+    // ===== Summary box =====
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+    const summaryLines = doc.splitTextToSize(stats.summaryText, USABLE_W - 24);
+    const summaryH = summaryLines.length * 13 + 20;
+    ensureSpace(summaryH);
+    doc.setFillColor(...PURPLE_BG);
+    doc.roundedRect(MARGIN, y, USABLE_W, summaryH, 6, 6, 'F');
+    doc.setTextColor(...DARK);
+    doc.text(summaryLines, MARGIN + 12, y + 18);
+    y += summaryH + 20;
+
+    // ===== Todo =====
+    sectionTitle('✅', 'Todo');
+    statGrid([
+      { val: stats.todo.total, label: 'Tugas Selesai' },
+      { val: stats.todo.high, label: 'High Priority' },
+      { val: stats.todo.medium, label: 'Medium Priority' },
+      { val: stats.todo.low, label: 'Low Priority' }
+    ]);
+    if (stats.todo.rows.length) table(['Tugas', 'Prioritas', 'Selesai', 'Kategori'], stats.todo.rows);
+    else emptyNote('Belum ada todo selesai di periode ini.');
+
+    // ===== Sholat =====
+    sectionTitle('🕌', 'Sholat');
+    statGrid([
+      { val: stats.sholat.totalDone, label: 'Total Waktu Sholat' },
+      { val: stats.sholat.pct + '%', label: 'Kepatuhan' },
+      { val: stats.sholat.totalPossible, label: 'Total Waktu (Target)' },
+      { val: stats.sholat.perfectDays, label: 'Hari Sempurna' }
+    ]);
+    table(['Waktu Sholat', 'Dilakukan', 'Persentase'], stats.sholat.rows);
+
+    // ===== Habit =====
+    sectionTitle('🔥', 'Habit Tracker');
+    if (stats.habits.length) {
+      table(['Habit', 'Dilakukan', 'Dari (Hari)', 'Persentase'], stats.habits.map(h => [
+        h.name + (h.isNew ? ' (baru)' : ''), `${h.done} kali`, `${h.possible} hari`, `${h.pct}%`
+      ]));
+    } else emptyNote('Belum ada habit.');
+
+    // ===== Tidur =====
+    sectionTitle('💤', 'Tidur');
+    statGrid([
+      { val: stats.sleep.avg, label: 'Rata-rata (jam)' },
+      { val: stats.sleep.days, label: 'Hari Dicatat' },
+      { val: stats.sleep.enough, label: 'Tidur Cukup' },
+      { val: stats.sleep.target + 'j', label: 'Target' }
+    ]);
+
+    // ===== Air Minum =====
+    sectionTitle('💧', 'Air Minum');
+    statGrid([
+      { val: stats.water.avg, label: 'Rata-rata Gelas/Hari' },
+      { val: stats.water.total, label: 'Total Gelas' },
+      { val: stats.water.hitTarget, label: 'Hari Capai Target' },
+      { val: stats.water.target, label: 'Target/Hari' }
+    ]);
+
+    // ===== Jurnal & Mood =====
+    sectionTitle('📓', 'Jurnal & Mood');
+    const journalItems = [
+      { val: stats.journal.count, label: 'Jurnal Ditulis' },
+      { val: stats.journal.consistency + '%', label: 'Konsistensi' }
+    ];
+    if (stats.journal.topMoodEmoji) journalItems.push({ val: stats.journal.topMoodEmoji, label: 'Mood Terbanyak' });
+    statGrid(journalItems);
+    if (stats.journal.moodBreakdown.length) {
+      ensureSpace(16);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...DARK);
+      doc.text(stats.journal.moodBreakdown.join('    '), MARGIN, y);
+      y += 20;
+    }
+
+    // ===== Goals =====
+    if (stats.goals.length) {
+      sectionTitle('📚', 'Goals');
+      table(['Goal', 'Progress', 'Milestone', 'Deadline'], stats.goals.map(g => [
+        g.title, `${g.pct}%`, `${g.milestoneDone || 0}/${g.milestoneCount || 0}`, g.deadline || '-'
+      ]));
+    }
+
+    // ===== Footer di semua halaman =====
+    const pageCount = doc.internal.getNumberOfPages();
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.text(`Digenerate oleh LifeHub · ${stats.generatedAt}`, PAGE_W / 2, PAGE_H - 20, { align: 'center' });
+    }
 
     const base64 = doc.output('datauristring').split(',')[1];
     const ok = await saveBinaryFile(filename, base64, 'application/pdf');
     if (ok) showToast('📄 PDF siap, pilih tempat menyimpan/kirim.', 3000);
   } catch (e) {
-    console.error('renderHtmlToPdfNative gagal', e);
+    console.error('renderReportNative gagal', e);
     showToast('❌ Gagal generate PDF: ' + (e.message || 'unknown error'));
   }
 }
