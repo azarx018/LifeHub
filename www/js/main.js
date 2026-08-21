@@ -10,7 +10,7 @@ import { navigateTo } from './core/router.js';
 import { scheduleNotifications } from './core/notifications.js';
 import { migrateHabitDays } from './features/habit.js';
 import { applySettings } from './features/settings.js';
-import { updateSkyBackground, updateClock } from './features/dashboard.js';
+import { updateSkyBackground, updateClock, updateGreetingSlow } from './features/dashboard.js';
 import { initPrayerTimes } from './features/prayer.js';
 import { checkWeeklyReviewTrigger } from './features/weeklyReview.js';
 import { setupEvents } from './legacy.js';
@@ -71,9 +71,17 @@ async function init() {
   cleanupTempApk().catch(e => console.error('cleanupTempApk error:', e));
   updateSkyBackground();
   setInterval(updateSkyBackground, 60000);
+  // FIX PERFORMA (v6.4.3): updateClock() sekarang cuma ngerjain hal berat
+  // (locale date formatting, dsb) kalau lagi di Dashboard — lihat catatan
+  // panjang di dashboard.js. Greeting/nama/tanggal dipisah ke interval 60
+  // detik sendiri (updateGreetingSlow), karena itu nggak perlu di-refresh
+  // tiap detik — cukup tiap menit, biar main thread nggak ke-ganggu tiap
+  // detik pas lagi ada animasi (modal/page-transition) atau lagi ngetik.
   setInterval(updateClock, 1000);
+  setInterval(updateGreetingSlow, 60000);
   setInterval(checkWeeklyReviewTrigger, 60000); // cek auto-trigger setiap menit
   updateClock();
+  updateGreetingSlow();
   // Init prayer times after DB ready
   initPrayerTimes();
   setTimeout(() => {

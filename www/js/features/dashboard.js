@@ -50,16 +50,26 @@ const QUOTES = [
 
 
 // ===== CLOCK =====
+// FIX PERFORMA (v6.4.3): dulu fungsi ini (+ updateGreeting di dalamnya)
+// dipanggil TIAP DETIK lewat setInterval di main.js, TANPA CEK lagi di
+// halaman mana user berada. Padahal liveClock/greetText/greetName/greetDate
+// cuma ada di markup Dashboard — di halaman lain elemennya cuma ke-hide
+// (`.page{display:none}`), TAPI kerjaannya (toLocaleDateString locale
+// Indonesia, yang lumayan berat) tetap jalan penuh tiap detik, di halaman
+// manapun. Ini motong main thread terus-terusan, gampang nabrak animasi
+// modal/page-transition yang lagi jalan → kerasa patah-patah — dan juga
+// nabrak event input (ngetik di textarea Journal, dsb) karena separated
+// thread yang sama dipakai buat proses keystroke.
+// Fix: skip semua kerjaan (termasuk write textContent) kalau bukan lagi di
+// Dashboard. Deteksi hari-ganti (buat reset S.xxxDate) TETAP jalan tiap
+// detik karena itu ringan (cuma string compare) dan penting jalan di
+// halaman manapun.
 let _lastDate = today();
 export function updateClock() {
-  const clockEl = el('liveClock'); if(!clockEl) return;
   const now2 = new Date();
-  const h = now2.getHours().toString().padStart(2,'0');
-  const m = now2.getMinutes().toString().padStart(2,'0');
-  const s = now2.getSeconds().toString().padStart(2,'0');
-  clockEl.textContent = `${h}:${m}:${s}`;
 
-  // Auto-refresh saat hari berganti (midnight fix)
+  // Deteksi hari berganti — ringan, HARUS tetap jalan di semua halaman
+  // (bukan cuma dashboard), soalnya reset S.xxxDate dipakai fitur lain juga.
   const currentDate = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,"0")}-${String(now2.getDate()).padStart(2,"0")}`;
   if(currentDate !== _lastDate) {
     _lastDate = currentDate;
@@ -76,10 +86,31 @@ export function updateClock() {
     else if(S.currentPage === 'journal') renderJournal();
   }
 
-  updateGreeting();
+  // Kerjaan yang nulis ke DOM (+ locale formatting yang berat) CUMA jalan
+  // kalau lagi di Dashboard — di halaman lain elemennya toh ke-hide, jadi
+  // ngerjain ini di halaman lain cuma buang-buang main thread doang.
+  if (S.currentPage !== 'dashboard') return;
+
+  const clockEl = el('liveClock');
+  if (clockEl) {
+    const h = now2.getHours().toString().padStart(2,'0');
+    const m = now2.getMinutes().toString().padStart(2,'0');
+    const s = now2.getSeconds().toString().padStart(2,'0');
+    clockEl.textContent = `${h}:${m}:${s}`;
+  }
+
+  updateGreeting(now2);
 }
-function updateGreeting() {
-  const h = new Date().getHours();
+// FIX PERFORMA (v6.4.3): dipisah supaya bisa dipanggil dari interval
+// TERPISAH yang jalan tiap 60 detik (bukan tiap detik) — greeting/nama/
+// tanggal nggak akan berubah dalam hitungan detik, jadi toLocaleDateString
+// yang mahal itu nggak perlu diulang 60x lebih sering dari yang dibutuhkan.
+export function updateGreetingSlow() {
+  if (S.currentPage !== 'dashboard') return;
+  updateGreeting(new Date());
+}
+function updateGreeting(nowDate) {
+  const h = (nowDate || new Date()).getHours();
   let greet = 'Selamat Pagi';
   if (h >= 11 && h < 15) greet = 'Selamat Siang';
   else if (h >= 15 && h < 18) greet = 'Selamat Sore';
@@ -88,7 +119,7 @@ function updateGreeting() {
   const gn = el('greetName'); if(gn) gn.textContent = S.settings.name;
   const gd = el('greetDate'); if(gd) {
     const opts = {weekday:'long',year:'numeric',month:'long',day:'numeric'};
-    gd.textContent = new Date().toLocaleDateString('id-ID', opts);
+    gd.textContent = (nowDate || new Date()).toLocaleDateString('id-ID', opts);
   }
 }
 
