@@ -1,0 +1,61 @@
+name: Deploy PWA to GitHub Pages
+
+# Jalan otomatis tiap push ke main (kalau ada perubahan di folder www/),
+# atau manual dari tab Actions. Ini workflow TERPISAH dari
+# "Build & Release Android APK" — dua-duanya boleh jalan bebas satu sama
+# lain, nggak saling ganggu.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'www/**'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Cuma izinkan 1 deployment jalan bersamaan — kalau ada push baru pas
+# deployment sebelumnya masih proses, yang lama dibatalkan (bukan antri).
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Sync versi (package.json -> www/js/core/version.js)
+        # PENTING: workflow ini TIDAK generate folder android/ (gak perlu,
+        # cuma deploy www/ doang) — jadi pakai mode "--www-only" biar
+        # scripts/sync-version.js gak nyari android/app/build.gradle yang
+        # emang sengaja gak ada di sini. Tanpa step ini, versi yang tampil
+        # di PWA (teks "Tentang", nama cache sw.js) bisa ketinggalan dari
+        # package.json kalau cuma package.json yang diubah tanpa nyentuh
+        # file lain di www/.
+        run: node scripts/sync-version.js --www-only
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload folder www/ sebagai Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./www
+
+      - name: Deploy ke GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

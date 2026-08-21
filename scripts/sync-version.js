@@ -241,7 +241,19 @@ export const APP_VERSION = '${pkgVersion}';
 }
 
 function main() {
+  const wwwOnly = process.argv.includes('--www-only');
   const pkgVersion = readPackageVersion();
+
+  if (wwwOnly) {
+    // Dipakai workflow deploy-pages.yml — di situ folder android/ memang
+    // sengaja TIDAK di-generate (workflow Pages cuma butuh www/, gak perlu
+    // build Android sama sekali), jadi bagian sync ke build.gradle di-skip.
+    writeAppVersionFile(pkgVersion);
+    console.log(`✓ Package version: ${pkgVersion}`);
+    console.log(`✓ www/js/core/version.js synced (--www-only, android/ dilewati)`);
+    return;
+  }
+
   const semver = parseSemver(pkgVersion);
   const versionCode = computeVersionCode(semver);
 
