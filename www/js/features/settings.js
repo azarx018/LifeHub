@@ -145,7 +145,7 @@ export async function renderSettings() {
   // di main.js saat app dibuka). Tidak nge-hit GitHub API lagi di sini biar
   // buka halaman Settings tidak nambah request; user bisa tekan "Cek Update"
   // manual kalau mau paksa cek ulang.
-  renderSettingsUpdateSection();
+  await renderSettingsUpdateSection();
 }
 export function saveSettings() {
   KV.set('lifehub_settings', S.settings);

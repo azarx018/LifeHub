@@ -38,3 +38,9 @@
 .update-progress-label{
   margin-top:6px;font-size:.76rem;color:var(--text3);text-align:center;
 }
+
+.update-last-error{
+  margin-top:8px;padding:8px 10px;background:#FFF0F0;border:1px solid #FFD0D0;
+  border-radius:8px;font-size:.75rem;color:#C0392B;word-break:break-word;
+  user-select:text;
+}

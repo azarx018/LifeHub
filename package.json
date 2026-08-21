@@ -1,6 +1,6 @@
 {
   "name": "lifehub",
-  "version": "6.4.3",
+  "version": "6.4.4",
   "description": "LifeHub — Personal Life Management App (Capacitor Android build)",
   "private": true,
   "scripts": {

@@ -4,7 +4,7 @@
 // File ini CUMA urusan UI/wiring tombol. Logika cek-versi/download/cleanup
 // ada di core/updateChecker.js (dipisah supaya updateChecker.js tetap murni
 // & gampang diuji tanpa DOM).
-import { el, showToast } from './utils.js';
+import { el, showToast, KV } from './utils.js';
 import { openModal, closeModal } from './modal.js';
 import { isNativeApp, getPlugin } from './platform.js';
 import {
@@ -15,6 +15,7 @@ import {
 } from './updateChecker.js';
 
 let _lastState = null; // cache render terakhir, dipakai settings section & popup
+const KV_KEY_LAST_ERROR = 'update_last_error';
 
 function renderPopupContent(state) {
   const curEl = el('updateCurrentVersion');
@@ -59,12 +60,13 @@ function setModalButtonsBusy(busy) {
   if (no) no.disabled = busy;
 }
 
-export function renderSettingsUpdateSection(state) {
+export async function renderSettingsUpdateSection(state) {
   const s = state || _lastState;
   if (!s) return;
   const curEl = el('settingsCurrentVersion');
   const statusEl = el('settingsUpdateStatus');
   const btnUpdateNow = el('btnUpdateNow');
+  const errEl = el('settingsUpdateLastError');
   if (curEl) curEl.textContent = s.currentVersion;
   if (statusEl) {
     statusEl.textContent = s.updateAvailable
@@ -72,6 +74,19 @@ export function renderSettingsUpdateSection(state) {
       : '✓ Kamu sudah pakai versi terbaru';
   }
   if (btnUpdateNow) btnUpdateNow.style.display = s.updateAvailable ? '' : 'none';
+
+  // Debug: nampilin error terakhir (kalau ada) langsung di Settings, biar
+  // gampang di-screenshot tanpa perlu akses adb logcat dari HP.
+  if (errEl) {
+    const lastError = await KV.get(KV_KEY_LAST_ERROR, null);
+    if (lastError && lastError.message) {
+      const when = new Date(lastError.at).toLocaleString('id-ID');
+      errEl.textContent = `⚠️ Error terakhir (${when}): ${lastError.message}`;
+      errEl.style.display = '';
+    } else {
+      errEl.style.display = 'none';
+    }
+  }
 }
 
 async function startDownloadFlow(state) {
@@ -90,8 +105,16 @@ async function startDownloadFlow(state) {
       setProgressUI(false);
     }, 800);
   } catch (e) {
+    const errMsg = (e && (e.message || e.errorMessage || String(e))) || 'Unknown error';
     console.error('Update gagal', e);
-    showToast('Update gagal. Silakan coba lagi nanti.', 3500);
+    // Toast default suka kepotong/ketutup buru-buru — makanya error juga
+    // ditulis di dalam modal (updateProgressLabel) yang gak ilang sendiri,
+    // dan disimpan ke KV biar bisa dilihat lagi lewat Settings meski modal
+    // udah ditutup (lihat renderSettingsUpdateSection + KV_KEY_LAST_ERROR).
+    setProgressUI(true, null, `Gagal: ${errMsg}`);
+    showToast(`Update gagal: ${errMsg}`, 6000);
+    await KV.set(KV_KEY_LAST_ERROR, { message: errMsg, at: new Date().toISOString() });
+    await renderSettingsUpdateSection();
     // Bersihkan file APK yang gagal/tidak lengkap sesuai spec bagian 13.
     try {
       if (await isNativeApp()) {
@@ -100,7 +123,6 @@ async function startDownloadFlow(state) {
       }
     } catch (_) { /* file mungkin memang belum sempat dibuat, aman diabaikan */ }
     setModalButtonsBusy(false);
-    setProgressUI(false);
   }
 }
 
@@ -138,7 +160,7 @@ export function initUpdateUI() {
     try {
       const state = await checkForUpdate({ force: true });
       _lastState = state;
-      renderSettingsUpdateSection(state);
+      await renderSettingsUpdateSection(state);
       showToast(state.updateAvailable ? `Update v${state.latestVersion} tersedia 🎉` : 'Sudah versi terbaru ✓', 2500);
     } finally {
       btnCheck.disabled = false;
@@ -162,7 +184,7 @@ export function initUpdateUI() {
 export async function runStartupUpdateCheck() {
   const state = await checkForUpdate({ force: false });
   _lastState = state;
-  renderSettingsUpdateSection(state);
+  await renderSettingsUpdateSection(state);
   if (!state.updateAvailable || !state.latestVersion) return;
   if (await isDismissed(state.latestVersion)) return; // sudah ditolak utk versi ini
   showUpdatePopup(state);
