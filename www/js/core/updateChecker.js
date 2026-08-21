@@ -138,6 +138,27 @@ export async function isDismissed(version) {
   return dismissed === version;
 }
 
+// Baca ReadableStream chunk demi chunk sambil lapor progress, lalu gabung
+// jadi 1 Uint8Array. Dipisah dari downloadAndInstallUpdate() biar gampang
+// di-skip pas response.body tidak tersedia (lihat komentar fallback di atas).
+async function readStreamWithProgress(body, contentLength, onProgress) {
+  const reader = body.getReader();
+  const chunks = [];
+  let received = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    if (onProgress) onProgress(contentLength ? received / contentLength : null);
+  }
+  const merged = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.length; }
+  return merged;
+}
+
 // ===== DOWNLOAD + INSTALL =====
 // onProgress(fraction 0..1 | null) - null kalau Content-Length tidak
 // diketahui (progress indeterminate).
@@ -150,27 +171,41 @@ export async function downloadAndInstallUpdate(downloadUrl, onProgress) {
   }
   if (!downloadUrl) throw new Error('URL APK tidak tersedia.');
 
-  const res = await fetch(downloadUrl);
-  if (!res.ok || !res.body) throw new Error(`Download gagal (status ${res.status})`);
+  // PENTING (root cause "Update gagal: Failed to fetch"): downloadUrl
+  // (browser_download_url dari GitHub Release) me-redirect ke
+  // objects.githubusercontent.com, yang TIDAK mengirim header
+  // Access-Control-Allow-Origin. fetch() biasa dari WebView (origin
+  // https://localhost) dianggap cross-origin dan diblokir CORS -> browser
+  // cuma kasih pesan generik "Failed to fetch", padahal server GitHub-nya
+  // sendiri baik-baik saja. Fix: aktifkan CapacitorHttp di
+  // capacitor.config.json ({ plugins: { CapacitorHttp: { enabled: true } } }),
+  // yang mem-patch window.fetch di Android supaya request jalan lewat native
+  // HTTP client (bukan WebView) — tidak kena CORS sama sekali, sama seperti
+  // curl. Fetch ke api.github.com (checkForUpdate di atas) sebelumnya
+  // "kebetulan" tetap jalan karena GitHub API memang kirim
+  // Access-Control-Allow-Origin: *, makanya gagalnya baru kelihatan pas
+  // tahap download APK, bukan pas cek update.
+  let res;
+  try {
+    res = await fetch(downloadUrl);
+  } catch (e) {
+    // Tangkap di sini biar pesan ke user jelas ini soal network/CORS,
+    // bukan cuma "Failed to fetch" mentah dari browser.
+    throw new Error(`Gagal menghubungi server download (${e && e.message ? e.message : 'network error'})`);
+  }
+  if (!res.ok) throw new Error(`Download gagal (status ${res.status})`);
 
   const contentLength = Number(res.headers.get('content-length')) || 0;
-  const reader = res.body.getReader();
-  const chunks = [];
-  let received = 0;
+  const merged = res.body
+    ? await readStreamWithProgress(res.body, contentLength, onProgress)
+    // Fallback: sebagian implementasi native-fetch (mis. CapacitorHttp)
+    // tidak mengekspos ReadableStream di response.body — di kondisi ini
+    // tetap lanjut download-nya, cuma progress bar jadi indeterminate
+    // (bukan per-persen) karena tidak ada chunk untuk dilaporkan.
+    : new Uint8Array(await res.arrayBuffer());
+  if (!res.body && onProgress) onProgress(null);
 
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    received += value.length;
-    if (onProgress) onProgress(contentLength ? received / contentLength : null);
-  }
-
-  // Gabungkan chunk -> base64 (Filesystem.writeFile butuh base64 untuk data biner).
-  const merged = new Uint8Array(received);
-  let offset = 0;
-  for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.length; }
+  // Gabungkan -> base64 (Filesystem.writeFile butuh base64 untuk data biner).
   let binaryStr = '';
   const CHUNK = 0x8000; // hindari call stack overflow dari String.fromCharCode(...arr) untuk file besar
   for (let i = 0; i < merged.length; i += CHUNK) {
