@@ -81,15 +81,24 @@ textarea.input-field{resize:vertical;min-height:90px}
 /* ===== MODAL ===== */
 .modal-backdrop{
   position:fixed;inset:0;
-  background:rgba(0,0,0,.5);backdrop-filter:blur(3px);
-  z-index:400;opacity:0;visibility:hidden;
-  /* Fix v6.0.3: dulu "transition:all" ikut nge-animasiin backdrop-filter tiap modal
-     buka/tutup — itu berat di GPU HP (beda sama opacity/transform yg smooth),
-     bikin kerasa patah-patah. Sekarang cuma opacity+visibility yg dianimasikan,
-     blur-nya muncul instan bareng background. */
-  transition:opacity var(--transition),visibility var(--transition);
+  background:rgba(0,0,0,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  z-index:400;
+  /* FIX PERFORMA (v6.4.10): dulu opacity di-animasikan (fade in/out) — MASALAHNYA,
+     elemen ini punya backdrop-filter (blur), dan blur itu nyampel konten di
+     belakangnya SECARA REAL-TIME. Nge-animasiin opacity dari elemen yang ada
+     blur-nya TETEP maksa browser hitung ulang blur tiap frame animasi (~13
+     frame buat 220ms di 60fps) — bukan "murah" kayak animasiin opacity
+     elemen biasa. Fix v6.0.3 sebelumnya cuma motong "transition:all" jadi
+     "transition:opacity" doang, tapi itu nggak ngilangin masalah utamanya
+     (animasi apapun di elemen ber-blur tetep mahal). Sekarang dibikin PERSIS
+     kayak project referensi "My Finance" yang kerasa ringan: backdrop
+     MUNCUL/ILANG INSTAN (display:none/block, TANPA transition), blur cuma
+     dihitung SEKALI pas ke-render, bukan berkali-kali sepanjang animasi.
+     Yang tetap smooth-animated cuma panel .modal-nya sendiri (transform,
+     bukan blur — itu murah, computed di GPU tanpa re-sampling konten). */
+  display:none;
 }
-.modal-backdrop.visible{opacity:1;visibility:visible}
+.modal-backdrop.visible{display:block}
 .modal{
   position:fixed;bottom:0;left:0;right:0;
   background:var(--surface);border-radius:20px 20px 0 0;
