@@ -275,7 +275,14 @@
           <span id="journalCurrentDate"></span>
           <button id="journalNextDay">›</button>
         </div>
-        <div class="journal-calendar-wrap"><div id="journalCalendar" class="journal-calendar"></div></div>
+        <div class="journal-calendar-wrap">
+          <div class="jcal-nav">
+            <button type="button" class="jcal-nav-btn" id="jcalPrevMonth" aria-label="Bulan sebelumnya">‹</button>
+            <span class="jcal-nav-label" id="jcalMonthLabel"></span>
+            <button type="button" class="jcal-nav-btn" id="jcalNextMonth" aria-label="Bulan berikutnya">›</button>
+          </div>
+          <div id="journalCalendar" class="journal-calendar"></div>
+        </div>
         <div class="journal-list" id="journalList"></div>
       </section>
 

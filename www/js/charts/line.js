@@ -2,6 +2,12 @@
 // Dipakai buat Trend Chart di Stats. Gaya & pendekatan sama kayak donut.js —
 // SVG di-generate manual pakai koordinat matematis, tanpa library luar
 // (konsisten sama prinsip project: vanilla JS, tanpa framework/build tool).
+import { fmt } from '../core/utils.js';
+// BUG (v6.4.14): "fmt" dipakai di bawah (format angka titik data) tapi
+// nggak PERNAH di-import — pola bug yang sama kayak renderJournal/renderTodos
+// sebelumnya (fungsi dipakai, lupa di-import). Beda efeknya: karena dipanggil
+// di dalam SVG-string-builder yang jalan pas render, chart trend di Stats
+// bakal throw "fmt is not defined" tiap kali ada data buat digambar.
 
 // points: array of { label, value } — value dalam skala 0-100 (persen) atau
 // unit bebas asal `target` disediakan buat gambar garis putus-putus target.
