@@ -6,13 +6,12 @@ import { uid, today, el, qs, qsa, fmt, fmtShort, showToast, escHtml } from '../c
 import { openModal, closeModal, confirm2 } from '../core/modal.js';
 
 export async function renderJournal() {
-  // DEBUG (v6.4.12): renderJournal() sebelumnya nggak ada try/catch sama
-  // sekali — kalau ada yang throw di dalemnya (misal DB.getAll gagal),
-  // error-nya silent, nggak kelihatan di HP (nggak ada akses adb logcat),
-  // dan efeknya PERSIS kayak yang dilaporin: teks/tanggal keliatan "diem"
-  // aja kayak nggak ada yang kejalan, padahal tombolnya udah bener kepencet.
-  // Try/catch ini SEMENTARA buat nemuin akar masalah beneran — begitu
-  // ketauan errornya apa, baru dibikinin fix permanen yang lebih rapi.
+  // Try/catch ini awalnya ditambahin buat DEBUG (v6.4.12), sekarang
+  // dipertahanin permanen sebagai safety-net — ternyata langsung berhasil
+  // nemuin bug beneran (renderJournal lupa di-import di legacy.js, lihat
+  // log.md v6.4.13). Tanpa ini, error kayak gitu SILENT total di HP (nggak
+  // ada akses adb logcat), jadi worth-it dipertahanin biar bug sejenis di
+  // masa depan langsung kelihatan juga, bukan didiemin.
   try {
     await renderJournalInner();
   } catch (e) {

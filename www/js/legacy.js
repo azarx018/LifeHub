@@ -13,8 +13,8 @@ import { navigateTo, openSidebar, closeSidebar } from './core/router.js';
 import { requestNotificationPermission, showPushNotif, scheduleNotifications, clearNotificationTimers } from './core/notifications.js';
 // ↓ Sprint 2: fitur yang sudah dipindah ke js/features/, dipakai lagi di
 // sini cuma buat wiring tombol di setupEvents().
-import { openTodoModal, saveTodo } from './features/todo.js';
-import { openJournalModal, saveJournal, navigateJournalMonth } from './features/journal.js';
+import { openTodoModal, saveTodo, renderTodos } from './features/todo.js';
+import { openJournalModal, saveJournal, navigateJournalMonth, renderJournal } from './features/journal.js';
 import { renderSholat } from './features/sholat.js';
 import { renderWater, addWater } from './features/water.js';
 import { renderGoals, openGoalModal, saveGoal, saveMilestone } from './features/goals.js';
