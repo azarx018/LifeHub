@@ -14,7 +14,7 @@ import { requestNotificationPermission, showPushNotif, scheduleNotifications, cl
 // ↓ Sprint 2: fitur yang sudah dipindah ke js/features/, dipakai lagi di
 // sini cuma buat wiring tombol di setupEvents().
 import { openTodoModal, saveTodo } from './features/todo.js';
-import { openJournalModal, saveJournal } from './features/journal.js';
+import { openJournalModal, saveJournal, navigateJournalMonth } from './features/journal.js';
 import { renderSholat } from './features/sholat.js';
 import { renderWater, addWater } from './features/water.js';
 import { renderGoals, openGoalModal, saveGoal, saveMilestone } from './features/goals.js';
@@ -119,18 +119,33 @@ export function setupEvents() {
   el('btnSaveJournal').addEventListener('click', saveJournal);
   el('journalSearch').addEventListener('input', e => { S.journalSearch = e.target.value; renderJournal(); });
   el('journalPrevDay').addEventListener('click', () => {
-    const d = new Date(S.journalDate+'T12:00:00'); d.setDate(d.getDate()-1);
-    S.journalDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    S._journalManualNav = S.journalDate !== today(); // tandai manual jika bukan hari ini
-    renderJournal();
+    try {
+      const d = new Date(S.journalDate+'T12:00:00'); d.setDate(d.getDate()-1);
+      S.journalDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      S._journalManualNav = S.journalDate !== today(); // tandai manual jika bukan hari ini
+      renderJournal();
+    } catch (e) {
+      console.error('journalPrevDay gagal', e);
+      showToast(`Prev-day error: ${(e&&e.message)||e}`, 6000);
+    }
   });
   el('journalNextDay').addEventListener('click', () => {
-    if(S.journalDate >= today()) return;
-    const d = new Date(S.journalDate+'T12:00:00'); d.setDate(d.getDate()+1);
-    S.journalDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    S._journalManualNav = S.journalDate !== today();
-    renderJournal();
+    try {
+      if(S.journalDate >= today()) return;
+      const d = new Date(S.journalDate+'T12:00:00'); d.setDate(d.getDate()+1);
+      S.journalDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      S._journalManualNav = S.journalDate !== today();
+      renderJournal();
+    } catch (e) {
+      console.error('journalNextDay gagal', e);
+      showToast(`Next-day error: ${(e&&e.message)||e}`, 6000);
+    }
   });
+  // Fitur geser bulan (v6.4.11) — tombol statis di markup, listener dipasang
+  // sekali di sini (BEDA sama .jcal-day yang di-rebuild tiap render, jadi
+  // listener-nya dipasang ulang tiap kali di renderJournalCalendar()).
+  el('jcalPrevMonth').addEventListener('click', () => navigateJournalMonth(-1));
+  el('jcalNextMonth').addEventListener('click', () => navigateJournalMonth(1));
   document.getElementById('journalModal').addEventListener('click', e => {
     const btn = e.target.closest('.mood-btn'); if(!btn) return;
     qsa('#journalModal .mood-btn').forEach(b => b.classList.remove('selected'));

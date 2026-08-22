@@ -6,6 +6,22 @@ import { uid, today, el, qs, qsa, fmt, fmtShort, showToast, escHtml } from '../c
 import { openModal, closeModal, confirm2 } from '../core/modal.js';
 
 export async function renderJournal() {
+  // DEBUG (v6.4.12): renderJournal() sebelumnya nggak ada try/catch sama
+  // sekali — kalau ada yang throw di dalemnya (misal DB.getAll gagal),
+  // error-nya silent, nggak kelihatan di HP (nggak ada akses adb logcat),
+  // dan efeknya PERSIS kayak yang dilaporin: teks/tanggal keliatan "diem"
+  // aja kayak nggak ada yang kejalan, padahal tombolnya udah bener kepencet.
+  // Try/catch ini SEMENTARA buat nemuin akar masalah beneran — begitu
+  // ketauan errornya apa, baru dibikinin fix permanen yang lebih rapi.
+  try {
+    await renderJournalInner();
+  } catch (e) {
+    const msg = (e && (e.message || String(e))) || 'Unknown error';
+    console.error('renderJournal gagal', e);
+    showToast(`Journal error: ${msg}`, 6000);
+  }
+}
+async function renderJournalInner() {
   const journals = await DB.getAll('journals');
   S.journals = journals;
 
@@ -79,6 +95,14 @@ function renderJournalCalendar(journals) {
   const first = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
 
+  // Fitur geser bulan (v6.4.11): label bulan-tahun di atas grid, di-update
+  // tiap render — navigasinya sendiri di navigateJournalMonth() di bawah,
+  // dipanggil dari tombol jcalPrevMonth/jcalNextMonth (wiring di legacy.js,
+  // biar konsisten sama pola tombol nav lain kayak journalPrevDay).
+  const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const labelEl = el('jcalMonthLabel');
+  if(labelEl) labelEl.textContent = `${monthNames[month]} ${year}`;
+
   for(let i=0; i<first; i++) { const e = document.createElement('div'); e.className='jcal-day empty'; cal.appendChild(e); }
   for(let d=1; d<=daysInMonth; d++) {
     const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -94,6 +118,17 @@ function renderJournalCalendar(journals) {
     });
     cal.appendChild(div);
   }
+}
+// Geser kalender ke bulan sebelumnya (-1) atau berikutnya (+1). Karena
+// kalender selalu ngikutin bulan dari S.journalDate (bukan state
+// terpisah), geser bulan otomatis mindahin tanggal terpilih ke tanggal 1
+// bulan itu — list jurnal di bawah ikut nampilin tanggal 1 juga.
+export function navigateJournalMonth(delta) {
+  const selDate = new Date(S.journalDate + 'T12:00:00');
+  const target = new Date(selDate.getFullYear(), selDate.getMonth() + delta, 1);
+  S.journalDate = `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-01`;
+  S._journalManualNav = S.journalDate !== today(); // tandai manual sama kayak journalPrevDay/NextDay
+  renderJournal();
 }
 export function openJournalView(j) {
   el('journalViewTitle').textContent = j.title || 'Jurnal';
