@@ -10,3 +10,4 @@ dist/
 *.jks
 .DS_Store
 log.md
+.vibesync/
