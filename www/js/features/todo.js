@@ -1,13 +1,44 @@
-/* ===== TODO ===== */
-// Tidak ada perubahan logika dari app.js v5.7 — cuma dipindah + di-export.
+/* ===== TODO (per hari) ===== */
+// Sejak v6.6.0 todo bersifat PER HARI — sama seperti Habit & Sholat: tiap todo
+// "milik" satu tanggal (field `date`), halaman Todo menampilkan todo untuk
+// tanggal yang lagi dipilih (S.todoDate), dan otomatis pindah ke hari baru
+// pas tanggal berganti (lihat updateClock() di dashboard.js). Todo hari-hari
+// sebelumnya TETAP tersimpan — tinggal geser tanggal pakai tombol ‹ ›.
 import { DB } from '../core/db.js';
 import { S } from '../core/state.js';
-import { uid, today, el, qs, qsa, fmtShort, showToast, escHtml } from '../core/utils.js';
+import { uid, today, el, qs, qsa, fmt, fmtShort, showToast, escHtml } from '../core/utils.js';
 import { openModal, closeModal, confirm2 } from '../core/modal.js';
 
-export async function renderTodos() {
+// Tanggal "pemilik" sebuah todo. Todo versi lama belum punya field `date`,
+// jadi fallback ke tanggal dibuatnya (createdAt), lalu tanggal selesainya.
+export function todoDateOf(t) {
+  return t.date || t.createdAt || t.doneAt || '';
+}
+// Migrasi satu kali: todo lama (belum punya `date`) dikasih `date` = tanggal
+// dibuatnya, lalu disimpan biar ngga diulang lagi. Data lama tidak dihapus/diubah
+// selain nambah field `date`.
+export async function migrateTodoDates() {
   const todos = await DB.getAll('todos');
-  S.todos = todos;
+  let changed = false;
+  for (const t of todos) {
+    if (!t.date) {
+      t.date = todoDateOf(t) || today();
+      await DB.put('todos', t);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+export async function renderTodos() {
+  const allTodos = await DB.getAll('todos');
+  S.todos = allTodos;
+  // Cuma todo milik tanggal yang lagi dipilih. (S.todoDate dibaca SETELAH await
+  // di atas, jadi kalau user geser tanggal cepat-cepat, render terakhir selalu
+  // konsisten dengan tanggal yang tampil.)
+  const todos = allTodos.filter(t => todoDateOf(t) === S.todoDate);
+  const dateEl = el('todoCurrentDate');
+  if(dateEl) dateEl.textContent = fmt(S.todoDate + 'T00:00:00') + (S.todoDate === today() ? ' · Hari ini' : '');
   let filtered = todos.filter(t => {
     if(S.todoFilter === 'all' && !t.archived) return true;
     if(S.todoFilter === 'pending') return !t.done && !t.archived;
@@ -26,7 +57,10 @@ export async function renderTodos() {
   const list = el('todoList'); if(!list) return;
   list.innerHTML = '';
   if(!filtered.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>Tidak ada todo di sini</p></div>';
+    const emptyMsg = todos.length
+      ? 'Tidak ada todo di sini'
+      : (S.todoDate === today() ? 'Belum ada todo hari ini. Tambah todo pertamamu!' : 'Tidak ada todo di tanggal ini');
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>${emptyMsg}</p></div>`;
     return;
   }
   const sorted = [...filtered].sort((a,b) => {
@@ -94,7 +128,10 @@ export async function saveTodo() {
   if(!title) { showToast('Judul tidak boleh kosong'); return; }
   const id = el('todoEditId').value || uid();
   const existing = await DB.get('todos', id) || {};
-  await DB.put('todos', { ...existing, id, title, note: el('todoNote').value.trim(), priority: el('todoPriority').value, category: el('todoCategory').value.trim(), deadline: el('todoDeadline').value, done: existing.done||false, archived: existing.archived||false, createdAt: existing.createdAt||today() });
+  // Todo baru -> masuk ke tanggal yang lagi dibuka di halaman Todo (S.todoDate).
+  // Todo yang diedit -> tetap di tanggalnya semula.
+  const date = (existing.id && todoDateOf(existing)) || S.todoDate;
+  await DB.put('todos', { ...existing, id, title, note: el('todoNote').value.trim(), priority: el('todoPriority').value, category: el('todoCategory').value.trim(), deadline: el('todoDeadline').value, done: existing.done||false, archived: existing.archived||false, createdAt: existing.createdAt||today(), date });
   closeModal('todoModal');
   renderTodos();
   showToast('Todo disimpan ✅');

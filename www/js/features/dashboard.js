@@ -7,6 +7,7 @@ import { isHabitScheduledOn, toggleHabitLog, renderHabits } from './habit.js';
 import { renderDashboardSleepBtn } from './sleep.js';
 import { renderDashboardCountdowns } from './settings.js';
 import { renderSholat } from './sholat.js';
+import { renderTodos, todoDateOf } from './todo.js';
 import { renderJournal } from './journal.js';
 import { buildDonutSVG } from '../charts/donut.js';
 // renderSholat: dashboard punya widget sholat SENDIRI (renderDashboardSholat,
@@ -75,6 +76,7 @@ export function updateClock() {
     _lastDate = currentDate;
     // Reset date-scoped states ke hari baru
     S.habitDate   = currentDate;
+    S.todoDate    = currentDate;
     S.sholatDate  = currentDate;
     S.journalDate = currentDate;
     S.waterDate   = currentDate;
@@ -82,6 +84,7 @@ export function updateClock() {
     updateSkyBackground();
     if(S.currentPage === 'dashboard') renderDashboard();
     else if(S.currentPage === 'habit')  renderHabits();
+    else if(S.currentPage === 'todo')   renderTodos();
     else if(S.currentPage === 'sholat') renderSholat();
     else if(S.currentPage === 'journal') renderJournal();
   }
@@ -406,21 +409,23 @@ export async function renderDashboard() {
   renderDashboardHabits(habits, hLogs);
 
 
-  // Todos — prioritas High→Medium→Low, belum selesai duluan
+  // Todos (per hari, sejak v6.6.0) — cuma todo milik HARI INI.
+  // Prioritas High→Medium→Low, belum selesai duluan
   const pOrder = {high:0, medium:1, low:2};
-  const pendingTodos = todos
-    .filter(t => !t.done && !t.archived)
+  const todayTodos = todos.filter(t => !t.archived && todoDateOf(t) === today());
+  const pendingTodos = todayTodos
+    .filter(t => !t.done)
     .sort((a,b) => (pOrder[a.priority]??1) - (pOrder[b.priority]??1));
-  const doneTodayTodos = todos
-    .filter(t => t.done && !t.archived && t.doneAt === today())
+  const doneTodayTodos = todayTodos
+    .filter(t => t.done)
     .sort((a,b) => (pOrder[a.priority]??1) - (pOrder[b.priority]??1));
-  // Tampilkan: pending dulu (sort priority), lalu yang done hari ini, max 5
+  // Tampilkan: pending dulu (sort priority), lalu yang sudah selesai, max 5
   const showTodos = [...pendingTodos, ...doneTodayTodos].slice(0,5);
   const dtEl = el('dashTodos');
   if(dtEl) {
     dtEl.innerHTML = '';
     if(!showTodos.length) {
-      dtEl.innerHTML = '<p style="font-size:0.8rem;color:var(--text3)">Tidak ada todo aktif 🎉</p>';
+      dtEl.innerHTML = '<p style="font-size:0.8rem;color:var(--text3)">Tidak ada todo hari ini 🎉</p>';
     } else {
       const priorityDot = {high:'🔴',medium:'🟡',low:'🟢'};
       showTodos.forEach(t => {
@@ -469,7 +474,7 @@ export async function renderDashboard() {
   if(donutCard) {
     const todaySholatForDonut = sholatLogs.find(s => s.date === today()) || { prayers: {} };
     const sholatDone = Object.values(todaySholatForDonut.prayers || {}).filter(Boolean).length;
-    const todoActive = todos.filter(t => !t.archived);
+    const todoActive = todayTodos; // donut = progres HARI INI (todo per hari)
     const segments = [
       { label: 'Todo',   value: todoActive.filter(t => t.done).length, total: todoActive.length,  color: '#6C63FF' },
       { label: 'Habit',  value: doneHabits,  total: habits.length,                               color: '#FF6584' },

@@ -6,6 +6,36 @@ Capacitor. Format: versi terbaru di paling atas.
 
 ---
 
+## v6.6.0 — Todo jadi per hari + Tentang disederhanakan
+
+### ✨ Todo per hari (sama seperti Habit & Sholat)
+**File diubah**: `features/todo.js`, `core/state.js`, `features/dashboard.js`,
+`legacy.js`, `main.js`, `index.html`
+
+- Tiap todo sekarang punya field `date` (tanggal pemiliknya). Halaman Todo
+  menampilkan todo untuk tanggal yang dipilih, dengan navigasi ‹ › di atas
+  list (sama seperti Habit/Sholat). Todo baru masuk ke tanggal yang lagi dibuka.
+- Pas hari berganti, halaman Todo otomatis pindah ke hari baru (list baru),
+  lewat `updateClock()` yang sama dengan Habit/Sholat/Jurnal/Air.
+- Todo hari-hari sebelumnya TETAP tersimpan — geser tanggal untuk melihatnya.
+- Migrasi otomatis (sekali jalan, `migrateTodoDates()` di `main.js`): todo lama
+  yang belum punya `date` dikasih `date` = tanggal dibuatnya (`createdAt`).
+  Tidak ada data yang dihapus. Backup lama tanpa `date` juga aman — dibaca
+  lewat fallback `todoDateOf()` (date → createdAt → doneAt).
+- Dashboard: widget Todo & donut sekarang cuma menghitung todo HARI INI.
+- Statistik/Log Aktivitas/Weekly Review/PDF tidak berubah (tetap berbasis
+  `doneAt`, yaitu tanggal todo benar-benar diselesaikan).
+
+### 🧹 Tentang
+**File diubah**: `index.html`, `main.js`, `css/pages/settings.css`
+
+- Nomor versi dihapus dari bagian Tentang. Sekarang isinya cuma deskripsi
+  aplikasi + changelog update ini.
+- `main.js` tidak lagi menulis versi ke teks Tentang (meta description tetap
+  diisi dari `APP_VERSION`).
+
+---
+
 ## v6.4.0 — Release signing permanen + GitHub Release & in-app update checker
 
 Implementasi dari 2 spec: `LifeHub_Android_Signing_GitHub_Actions_Keystore_Spec.md`

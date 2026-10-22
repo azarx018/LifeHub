@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
   <title>LifeHub</title>
-  <meta name="description" content="Personal Life Management App — v6.4.0"/>
+  <meta name="description" content="Personal Life Management App — v6.6.0"/>
   <meta name="theme-color" content="#6C63FF"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -205,6 +205,11 @@
         <div class="page-toolbar">
           <div class="search-box"><input type="text" id="todoSearch" placeholder="Cari todo..." class="search-input"/></div>
           <button class="btn btn-primary" id="btnAddTodo">+ Tambah</button>
+        </div>
+        <div class="habit-date-nav">
+          <button id="todoPrevDay" aria-label="Hari sebelumnya">‹</button>
+          <span id="todoCurrentDate"></span>
+          <button id="todoNextDay" aria-label="Hari berikutnya">›</button>
         </div>
         <div class="filter-row">
           <button class="filter-btn active" data-filter="all">Semua</button>
@@ -527,9 +532,20 @@
           <div class="settings-group">
             <div class="settings-group-title">Tentang</div>
             <div class="settings-item settings-info">
-              <p><strong>LifeHub</strong> v6.4.0</p>
+              <p><strong>LifeHub</strong></p>
               <p>Manage Your Own Life</p>
+              <p>Aplikasi pribadi untuk mengatur hidup sehari-hari: todo, habit, jurnal, sholat, tidur, air minum, goals, dan statistik. Semua data tersimpan lokal di perangkatmu — tanpa server, tanpa akun.</p>
               <p>In Collaboration Azar & ClaudeAI</p>
+            </div>
+            <div class="settings-item settings-info about-changelog">
+              <p><strong>Yang baru di update ini</strong></p>
+              <ul>
+                <li>Todo sekarang per hari, sama seperti Habit dan Sholat: tiap hari list-nya berganti otomatis.</li>
+                <li>Todo hari-hari sebelumnya tetap tersimpan — geser tanggal dengan tombol ‹ › untuk melihatnya.</li>
+                <li>Todo yang sudah ada otomatis masuk ke tanggal saat dibuat.</li>
+                <li>Dashboard hanya menampilkan todo hari ini.</li>
+                <li>Bagian Tentang kini hanya berisi deskripsi aplikasi dan changelog update ini.</li>
+              </ul>
             </div>
           </div>
         </div>

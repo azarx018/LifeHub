@@ -17,6 +17,8 @@
 .settings-item label{font-size:.86rem;font-weight:500}
 .settings-info{flex-direction:column;align-items:flex-start;gap:3px}
 .settings-info p{font-size:.82rem;color:var(--text2)}
+.about-changelog ul{margin:2px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.about-changelog li{font-size:.8rem;color:var(--text2);line-height:1.45}
 
 /* ===== NOTIFICATION SETTINGS ===== */
 .notif-note-item{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:6px}

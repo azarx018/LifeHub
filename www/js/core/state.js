@@ -9,6 +9,7 @@ export const S = {
   todoFilter: 'all',
   todoPriority: 'all',
   todoSearch: '',
+  todoDate: today(), // Todo sekarang per hari (sama kayak habit/sholat)
   habitDate: today(),
   sholatDate: today(),
   journalDate: today(),

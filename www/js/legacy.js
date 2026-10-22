@@ -100,6 +100,10 @@ export function setupEvents() {
     qsa('.filter-btn[data-priority]').forEach(bb => bb.classList.remove('active'));
     b.classList.add('active'); S.todoPriority = b.dataset.priority; renderTodos();
   }));
+  // Navigasi tanggal Todo (per hari, sama kayak Habit/Sholat). Pakai prevDay/
+  // nextDay dari utils (tanggal lokal, bebas bug timezone).
+  el('todoPrevDay').addEventListener('click', () => { S.todoDate = prevDay(S.todoDate); renderTodos(); });
+  el('todoNextDay').addEventListener('click', () => { S.todoDate = nextDay(S.todoDate); renderTodos(); });
   // HABIT
   el('btnAddHabit').addEventListener('click', () => openHabitModal());
   el('btnSaveHabit').addEventListener('click', saveHabit);

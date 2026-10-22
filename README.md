@@ -4,7 +4,7 @@
 
 ## Fitur
 - 🏠 Dashboard real-time (pagi/siang/malam)
-- ✅ Todo Manager
+- ✅ Todo Manager (per hari — berganti tiap hari, riwayat hari sebelumnya tetap tersimpan)
 - 🔥 Habit Tracker
 - 📓 Journal Harian
 - 🕌 Sholat Tracker

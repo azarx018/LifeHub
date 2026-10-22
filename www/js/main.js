@@ -9,6 +9,7 @@ import { KV, el, qs } from './core/utils.js';
 import { navigateTo } from './core/router.js';
 import { scheduleNotifications } from './core/notifications.js';
 import { migrateHabitDays } from './features/habit.js';
+import { migrateTodoDates } from './features/todo.js';
 import { applySettings } from './features/settings.js';
 import { updateSkyBackground, updateClock, updateGreetingSlow } from './features/dashboard.js';
 import { initPrayerTimes } from './features/prayer.js';
@@ -36,11 +37,12 @@ async function init() {
   // Migrasi habit lama (yang cuma punya `target` angka) ke sistem hari spesifik
   // (`days`) — sekali jalan aja, abis itu field `days` selalu ada di tiap habit.
   try { await migrateHabitDays(); } catch(e) { console.error('migrateHabitDays failed', e); }
-  // Set versi otomatis dari APP_VERSION — biar teks "Tentang" & meta description
-  // ngga pernah lupa ke-update lagi kayak yang kejadian sebelumnya (nyangkut di v3.3).
+  // Migrasi todo lama (belum punya field `date`) ke sistem todo per hari —
+  // sekali jalan aja, abis itu tiap todo selalu punya `date` (tanggal pemiliknya).
+  try { await migrateTodoDates(); } catch(e) { console.error('migrateTodoDates failed', e); }
+  // Set versi otomatis dari APP_VERSION ke meta description (versi TIDAK lagi
+  // ditampilkan di "Tentang" sejak v6.6.0 — Tentang cuma deskripsi app + changelog).
   try {
-    const aboutVerEl = qs('.settings-info strong');
-    if (aboutVerEl && aboutVerEl.nextSibling) aboutVerEl.nextSibling.textContent = ` v${APP_VERSION}`;
     const metaDesc = qs('meta[name="description"]');
     if (metaDesc) metaDesc.setAttribute('content', `Personal Life Management App — v${APP_VERSION}`);
   } catch(e) { console.error('Version display failed', e); }
