@@ -9,7 +9,6 @@ import { renderDashboardCountdowns } from './settings.js';
 import { renderSholat } from './sholat.js';
 import { renderTodos, todoDateOf } from './todo.js';
 import { renderJournal } from './journal.js';
-import { buildDonutSVG } from '../charts/donut.js';
 // renderSholat: dashboard punya widget sholat SENDIRI (renderDashboardSholat,
 // bukan reuse features/sholat.js — jadi tidak diimport dari sana.
 import { checkAchievements } from './game/achievements.js';
@@ -138,20 +137,20 @@ export function updateSkyBackground() {
   let showStars = false;
 
   if (h >= 4 && h < 6) {
-    heroBg = 'linear-gradient(135deg,#2c1654 0%,#8B4CA8 50%,#FF8C42 100%)';
+    heroBg = 'linear-gradient(145deg,#2f3a4f 0%,#7d6b86 55%,#d9a07a 100%)';
   } else if (h >= 6 && h < 10) {
-    heroBg = 'linear-gradient(135deg,#FF8C42 0%,#FFD700 40%,#6C63FF 100%)';
+    heroBg = 'linear-gradient(145deg,#4f7a5a 0%,#8fb07a 55%,#e3c98a 100%)';
   } else if (h >= 10 && h < 14) {
-    heroBg = 'linear-gradient(135deg,#1565C0 0%,#1E90FF 60%,#6C63FF 100%)';
+    heroBg = 'linear-gradient(145deg,#2f6b6a 0%,#4f8f86 60%,#8fbf9a 100%)';
   } else if (h >= 14 && h < 17) {
-    heroBg = 'linear-gradient(135deg,#6C63FF 0%,#1E90FF 60%,#4ECDC4 100%)';
+    heroBg = 'linear-gradient(145deg,#3d6b5a 0%,#5f8f7a 55%,#9fb98f 100%)';
   } else if (h >= 17 && h < 19) {
-    heroBg = 'linear-gradient(135deg,#c0392b 0%,#e67e22 40%,#f39c12 100%)';
+    heroBg = 'linear-gradient(145deg,#8a4f3a 0%,#c47f4a 55%,#e3b36a 100%)';
   } else if (h >= 19 && h < 21) {
-    heroBg = 'linear-gradient(135deg,#1a0a2e 0%,#2d1b69 60%,#6C63FF 100%)';
+    heroBg = 'linear-gradient(145deg,#1d2a3a 0%,#34475f 60%,#4f6b6a 100%)';
     showStars = true;
   } else {
-    heroBg = 'linear-gradient(135deg,#0a0015 0%,#1a0a3e 50%,#0d1b4d 100%)';
+    heroBg = 'linear-gradient(145deg,#0d1612 0%,#16261f 55%,#1f3a30 100%)';
     showStars = true;
   }
 
@@ -476,26 +475,32 @@ export async function renderDashboard() {
     const sholatDone = Object.values(todaySholatForDonut.prayers || {}).filter(Boolean).length;
     const todoActive = todayTodos; // donut = progres HARI INI (todo per hari)
     const segments = [
-      { label: 'Todo',   value: todoActive.filter(t => t.done).length, total: todoActive.length,  color: '#6C63FF' },
-      { label: 'Habit',  value: doneHabits,  total: habits.length,                               color: '#FF6584' },
-      { label: 'Sholat', value: sholatDone,  total: 5,                                           color: '#43E97B' },
-      { label: 'Air',    value: wc,           total: wt,                                          color: '#44A8E0' },
+      { label: 'Todo',   value: todoActive.filter(t => t.done).length, total: todoActive.length,  color: '#e7806f' },
+      { label: 'Habit',  value: doneHabits,  total: habits.length,                               color: '#7fb069' },
+      { label: 'Sholat', value: sholatDone,  total: 5,                                           color: '#5fb3c4' },
+      { label: 'Air',    value: wc,           total: wt,                                          color: '#5b9bd5' },
     ];
-    const { svg } = buildDonutSVG(segments);
-    const legendHtml = segments.map(s => `
-      <div class="donut-legend-item">
-        <span class="donut-legend-dot" style="background:${s.color}"></span>
-        <span class="donut-legend-label">${s.label}</span>
-        <span class="donut-legend-val">${s.value}/${s.total}</span>
-      </div>
-    `).join('');
+    // Progres hari ini — bar horizontal (v6.7.0, pengganti donat).
+    // Bar mulai dari nilai terakhir (window.__lhProg) supaya render ulang
+    // dashboard cuma menganimasikan yang berubah, bukan mengulang dari nol.
+    const prevProg = (window.__lhProg = window.__lhProg || {});
+    const rows = segments.map(s => ({
+      ...s,
+      p: s.total ? Math.min(100, Math.round(s.value / s.total * 100)) : 0,
+      start: prevProg[s.label] ?? 0
+    }));
     donutCard.innerHTML = `
-      <div class="card-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/></svg> Progress Hari Ini</div>
-      <div class="donut-wrap">
-        <div class="donut-svg-wrap">${svg}</div>
-        <div class="donut-legend">${legendHtml}</div>
-      </div>
+      <div class="card-label">Progres hari ini</div>
+      <div class="prog-list">${rows.map(s => `
+        <div class="prog-item">
+          <div class="prog-top"><span><i style="background:${s.color}"></i>${s.label}</span><b>${s.value}/${s.total}</b></div>
+          <div class="prog-track"><div class="prog-fill" style="--p:${s.start / 100};background:${s.color}"></div></div>
+        </div>`).join('')}</div>
     `;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const fills = donutCard.querySelectorAll('.prog-fill');
+      rows.forEach((s, i) => { if (fills[i]) fills[i].style.setProperty('--p', s.p / 100); prevProg[s.label] = s.p; });
+    }));
   }
 
   // Prayer countdown card

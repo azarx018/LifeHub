@@ -91,12 +91,12 @@ export async function endSleepSession(quality) {
       warnBody.innerHTML = `
         <div class="sleep-warn-stat">
           <div class="sleep-warn-stat-item">
-            <div class="swsi-val" style="color:#FF6B6B">${duration.toFixed(1)}<span class="swsi-unit">jam</span></div>
+            <div class="swsi-val" style="color:#e8847a">${duration.toFixed(1)}<span class="swsi-unit">jam</span></div>
             <div class="swsi-lbl">Tidur kamu</div>
           </div>
           <div class="sleep-warn-vs">vs</div>
           <div class="sleep-warn-stat-item">
-            <div class="swsi-val" style="color:#43E97B">${target}<span class="swsi-unit">jam</span></div>
+            <div class="swsi-val" style="color:#6fae7a">${target}<span class="swsi-unit">jam</span></div>
             <div class="swsi-lbl">Target</div>
           </div>
         </div>
@@ -225,7 +225,7 @@ function renderSleepChart(logs, target) {
   last7.forEach(day => {
     const pct = Math.min(100, (day.dur / maxDur * 100));
     const targetPct = Math.min(100, (target / maxDur * 100));
-    const color = day.dur >= target ? '#43E97B' : day.dur > 0 ? '#FF6B6B' : '#E0E0E0';
+    const color = day.dur >= target ? '#6fae7a' : day.dur > 0 ? '#e8847a' : 'var(--bg3)';
     const item = document.createElement('div');
     item.className = 'sleep-bar-item';
     item.innerHTML = `

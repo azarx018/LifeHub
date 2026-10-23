@@ -33,7 +33,7 @@ export async function renderHabits() {
     item.className = 'habit-item animate-in';
     item.innerHTML = `
       <div class="habit-item-header">
-        <div class="habit-icon-badge" style="background:${h.color||'#6C63FF'}22">${h.icon||'🔥'}</div>
+        <div class="habit-icon-badge" style="background:${h.color||'#5f8d62'}22">${h.icon||'🔥'}</div>
         <div class="habit-info">
           <div class="habit-name">${escHtml(h.name)}</div>
           <div class="habit-streak">🔥 ${streak} beruntun · ${scheduleLabel}</div>
@@ -43,7 +43,7 @@ export async function renderHabits() {
           : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="9"/></svg>`
         }</button>
       </div>
-      <div class="habit-progress-bar"><div class="habit-progress-fill" style="width:${Math.min(100,pct)}%;background:${h.color||'#6C63FF'}"></div></div>
+      <div class="habit-progress-bar"><div class="habit-progress-fill" style="width:${Math.min(100,pct)}%;background:${h.color||'#5f8d62'}"></div></div>
       <div class="habit-stats-row">
         <span class="habit-stat">${weekLabel}</span>
         <span class="habit-stat">${pct}%</span>
@@ -298,7 +298,7 @@ function renderStreakCalendar(habits, hLogs) {
 export function openHabitModal(h=null) {
   el('habitEditId').value = h ? h.id : '';
   el('habitName').value = h ? h.name : '';
-  el('habitColor').value = h ? (h.color||'#6C63FF') : '#6C63FF';
+  el('habitColor').value = h ? (h.color||'#5f8d62') : '#5f8d62';
   const icon = h ? (h.icon||'💧') : '💧';
   el('habitIcon').value = icon;
   qsa('.icon-opt', el('habitIconPicker')).forEach(b => b.classList.toggle('selected', b.dataset.icon===icon));

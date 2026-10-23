@@ -7,4 +7,4 @@
 // - state.js / main.js (APP_VERSION di teks "Tentang" & meta description)
 // - sw.js (nama cache, lewat dynamic import)
 // - core/updateChecker.js (perbandingan versi terpasang vs GitHub Release terbaru)
-export const APP_VERSION = '6.6.0';
+export const APP_VERSION = '6.7.0';

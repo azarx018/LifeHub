@@ -28,8 +28,8 @@ function mondayOf(dateStr) {
 }
 
 const TREND_META = {
-  habit:  { label: 'Habit',     color: '#6C63FF', suffix: '%', maxValue: 100 },
-  sholat: { label: 'Sholat',    color: '#43E97B', suffix: '%', maxValue: 100 },
+  habit:  { label: 'Habit',     color: '#5f8d62', suffix: '%', maxValue: 100 },
+  sholat: { label: 'Sholat',    color: '#6fae7a', suffix: '%', maxValue: 100 },
   sleep:  { label: 'Tidur',     color: '#4ECDC4', suffix: 'j', maxValue: null },
   water:  { label: 'Air Minum', color: '#44A8E0', suffix: ' gls', maxValue: null },
 };
@@ -165,7 +165,7 @@ export async function renderStats() {
     const dur = log ? log.duration : 0;
     const pct = Math.min(100, (dur/10)*100);
     const day = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getDay()];
-    const color = dur >= (S.settings.sleepTarget||8) ? '#43E97B' : dur > 0 ? '#FF6B6B' : '#E0E0E0';
+    const color = dur >= (S.settings.sleepTarget||8) ? '#6fae7a' : dur > 0 ? '#e8847a' : 'var(--bg3)';
     sleepHtml += `<div class="bar-item"><div class="bar-val">${dur>0?dur:''}</div><div class="bar-fill" style="height:${pct}%;background:${color}"></div><div class="bar-lbl">${day}</div></div>`;
   }
   sleepHtml += '</div>';
@@ -181,7 +181,7 @@ export async function renderStats() {
     const cnt = log ? Object.values(log.prayers||{}).filter(Boolean).length : 0;
     const pct = cnt/5*100;
     const day = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getDay()];
-    sholatHtml += `<div class="bar-item"><div class="bar-val">${cnt}/5</div><div class="bar-fill" style="height:${pct}%;background:#6C63FF"></div><div class="bar-lbl">${day}</div></div>`;
+    sholatHtml += `<div class="bar-item"><div class="bar-val">${cnt}/5</div><div class="bar-fill" style="height:${pct}%;background:#5f8d62"></div><div class="bar-lbl">${day}</div></div>`;
   }
   sholatHtml += '</div>';
   sholatCard.innerHTML = sholatHtml;

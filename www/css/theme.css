@@ -1,0 +1,118 @@
+/* ===== THEME v6.7 — Sage + Glass =====
+   Lapisan desain, DIMUAT TERAKHIR (setelah semua css/pages). Token warna
+   ada di base.css; file ini cuma mengatur bentuk, kaca, dan gerak.
+   Aturan performa: animasi hanya transform/opacity, backdrop-filter hanya
+   di 3 elemen kecil (topbar, tab bar, modal), tanpa filter:blur besar. */
+
+body{font-family:var(--font);letter-spacing:-.005em}
+.app::before{content:"";position:absolute;left:-20%;right:-20%;top:0;height:62%;z-index:-1;pointer-events:none;
+  background:radial-gradient(38% 46% at 22% 26%,var(--g1),transparent 70%),radial-gradient(34% 42% at 82% 16%,var(--g2),transparent 70%),radial-gradient(40% 40% at 58% 70%,var(--g3),transparent 70%)}
+
+/* Topbar kaca */
+.topbar{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-bottom:.5px solid var(--border);box-shadow:none}
+.topbar-title{font-size:1.05rem;font-weight:700;letter-spacing:-.02em}
+
+/* Kartu */
+.card,.dash-card{border:0;border-radius:var(--radius);box-shadow:var(--shadow)}
+.dash-card{padding:16px}
+.dash-grid{gap:14px}
+.card-label{font-size:.76rem;font-weight:650;letter-spacing:0;text-transform:none;color:var(--text3)}
+.water-quick-card{background:linear-gradient(155deg,var(--tint-blue),color-mix(in srgb,var(--tint-blue),var(--surface) 45%))}
+.sleep-quick-card,.countdown-card{background:linear-gradient(155deg,var(--tint-lav),color-mix(in srgb,var(--tint-lav),var(--surface) 45%))}
+.mood-card{background:linear-gradient(155deg,var(--tint-peach),color-mix(in srgb,var(--tint-peach),var(--surface) 45%))}
+.prayer-countdown-card,.insight-card{background:linear-gradient(155deg,var(--tint-sage),color-mix(in srgb,var(--tint-sage),var(--surface) 45%))}
+.quote-card{background:linear-gradient(155deg,var(--tint-yel),color-mix(in srgb,var(--tint-yel),var(--surface) 45%))}
+
+/* Hero (langit per waktu tetap, palet diredam) */
+.dashboard-hero{border-radius:34px;padding:24px 22px 20px;min-height:140px;margin-bottom:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 24px 50px -18px rgba(20,40,25,.5)}
+.greeting-name{font-size:2rem;font-weight:780;letter-spacing:-.04em}
+.live-clock{font-size:1.9rem;font-weight:700;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+
+/* Progres hari ini (pengganti donat) */
+#dashDonutCard{grid-column:span 2}
+.prog-list{display:grid;gap:14px}
+.prog-top{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;font-weight:600;margin-bottom:7px}
+.prog-top i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.prog-top b{color:var(--text2);font-weight:650;font-variant-numeric:tabular-nums}
+.prog-track{height:9px;border-radius:99px;background:var(--bg3);overflow:hidden}
+.prog-fill{height:100%;width:100%;border-radius:99px;transform-origin:left;transform:scaleX(var(--p,0));transition:transform .9s cubic-bezier(.2,.8,.2,1)}
+
+/* Kontrol */
+.btn{border-radius:14px;font-weight:650;transition:transform .2s cubic-bezier(.3,1.5,.5,1),background-color .2s,opacity .2s}
+.btn:active,.btn-sm:active{transform:scale(.96)}
+.btn-primary{background:var(--primary);color:var(--on-primary);box-shadow:none}
+.input-field{border:0;background:var(--bg3);border-radius:14px}
+.input-field:focus{outline:0;box-shadow:0 0 0 2px var(--primary-light)}
+.toggle input:checked+.toggle-slider{background:#5fae63}
+.todo-check,.dash-check,.habit-check-btn,.dash-sholat-check,.prayer-time-check,.mood-btn{transition:transform .35s cubic-bezier(.3,1.5,.5,1),background-color .2s,border-color .2s,color .2s}
+.todo-check:active,.dash-check:active,.habit-check-btn:active,.dash-sholat-check:active,.prayer-time-check:active{transform:scale(.86)}
+.mood-btn.selected{transform:scale(1.15)}
+.nav-item.active{background:var(--tint-sage);color:var(--primary)}
+
+/* Modal = lembar kaca */
+.modal-backdrop{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(5,8,5,.55)}
+.modal{border-radius:32px 32px 0 0;background:var(--glass);-webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);transition:transform .5s cubic-bezier(.2,.9,.25,1)}
+
+/* Modal tertutup benar-benar disembunyikan (bayangan & blur tidak bocor di tepi bawah) */
+.modal:not(.open){visibility:hidden;box-shadow:none;transition:transform .5s cubic-bezier(.2,.9,.25,1),visibility 0s .5s}
+.modal.open{visibility:visible}
+
+/* Mood: lima emoji selalu muat satu baris */
+.mood-row{flex-wrap:nowrap;gap:4px}
+.mood-btn{flex:1;min-width:0;max-width:44px;width:auto;height:auto;aspect-ratio:1;font-size:1.1rem}
+
+/* Gerak halaman: cuma saat pindah halaman */
+@keyframes pageEnter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.page.active{animation:pageEnter .4s cubic-bezier(.2,.8,.2,1)}
+.page.active .dash-grid>*{animation:cardIn .6s cubic-bezier(.2,.8,.2,1) backwards}
+.page.active .dash-grid>:nth-child(n+3){animation-delay:.06s}
+.page.active .dash-grid>:nth-child(n+5){animation-delay:.12s}
+.page.active .dash-grid>:nth-child(n+7){animation-delay:.18s}
+
+/* Warna aksen teks di dark mode */
+[data-theme="dark"] .nav-item.active,[data-theme="dark"] .nav-item:hover,[data-theme="dark"] .sidebar-logo,[data-theme="dark"] .bnav-item.active,[data-theme="dark"] .filter-btn.active{color:var(--primary-light)}
+
+/* ===== Mobile: tab bar pil kaca ===== */
+@media (max-width:767px){
+  .page-container{padding:16px 18px calc(112px + env(safe-area-inset-bottom))}
+  .main-wrapper::after{content:"";position:fixed;left:0;right:0;bottom:0;height:130px;z-index:90;pointer-events:none;background:linear-gradient(transparent,var(--bg) 80%)}
+  .toast{bottom:calc(90px + env(safe-area-inset-bottom))}
+  .bottom-nav{left:50%;right:auto;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));width:min(300px,calc(100% - 32px));height:60px;padding:6px;border:0;border-radius:32px;background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);box-shadow:0 0 0 .5px rgba(255,255,255,.55),inset 0 1px 0 rgba(255,255,255,.65),0 18px 44px -10px rgba(20,30,20,.3)}
+  [data-theme="dark"] .bottom-nav{box-shadow:0 0 0 .5px rgba(255,255,255,.1),inset 0 1px 0 rgba(255,255,255,.08),0 18px 44px -10px rgba(0,0,0,.7)}
+  .bnav-item{position:relative;z-index:1;padding:0;border-radius:26px}
+  .bnav-item small,.bnav-item::before{display:none}
+  .bnav-item svg{width:23px;height:23px;transition:transform .3s cubic-bezier(.3,1.5,.5,1)}
+  .bnav-item:active svg{transform:scale(.88)}
+  .bnav-ind{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/5);border-radius:26px;background:rgba(255,255,255,.75);box-shadow:inset 0 1px 0 #fff,0 3px 12px rgba(20,30,20,.12);opacity:0;pointer-events:none;will-change:transform;transition:transform .6s cubic-bezier(.3,1.3,.4,1),opacity .2s}
+  [data-theme="dark"] .bnav-ind{background:rgba(255,255,255,.13);box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+  @supports selector(:has(*)){
+    .bottom-nav:has(.bnav-item.active) .bnav-ind{opacity:1}
+    .bottom-nav:has(.bnav-item:nth-of-type(2).active) .bnav-ind{transform:translateX(100%)}
+    .bottom-nav:has(.bnav-item:nth-of-type(3).active) .bnav-ind{transform:translateX(200%)}
+    .bottom-nav:has(.bnav-item:nth-of-type(4).active) .bnav-ind{transform:translateX(300%)}
+    .bottom-nav:has(.bnav-item:nth-of-type(5).active) .bnav-ind{transform:translateX(400%)}
+  }
+  @supports not selector(:has(*)){.bnav-item.active{background:rgba(120,150,120,.18)}}
+}
+
+
+/* ===== Perbaikan hasil review v6.7 ===== */
+:root{color-scheme:light;--ck:rgba(120,128,115,.5)}
+[data-theme="dark"]{color-scheme:dark;--ck:rgba(255,255,255,.28)}
+
+/* Bar chart (Statistik & Sleep) runtuh jadi garis tipis di v6.6: tinggi persen
+   butuh induk bertinggi pasti. Bar kini mengisi tinggi chart, label di bawah. */
+.bar-item,.sleep-bar-item{height:100%;justify-content:flex-end}
+.bar-fill{max-height:calc(100% - 30px);border-radius:6px 6px 0 0}
+.sleep-bar{max-height:calc(100% - 30px)}
+.bar-chart{height:110px}
+
+/* Checkbox native -> bulat sage, serasi di light & dark */
+input[type=checkbox]:not(.toggle input){-webkit-appearance:none;appearance:none;width:20px;height:20px;flex:none;border-radius:50%;border:1.5px solid var(--ck);background:transparent;display:inline-grid;place-content:center;cursor:pointer;transition:background-color .2s,border-color .2s,transform .35s cubic-bezier(.3,1.5,.5,1)}
+input[type=checkbox]:not(.toggle input)::after{content:"";width:9px;height:5px;margin-top:-2px;border:2px solid var(--on-primary);border-top:0;border-right:0;transform:rotate(-45deg) scale(0);transition:transform .2s cubic-bezier(.3,1.5,.5,1)}
+input[type=checkbox]:not(.toggle input):checked{background:var(--primary);border-color:var(--primary)}
+input[type=checkbox]:not(.toggle input):checked::after{transform:rotate(-45deg) scale(1)}
+input[type=checkbox]:not(.toggle input):active{transform:scale(.86)}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}

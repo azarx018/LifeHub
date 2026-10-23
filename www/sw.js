@@ -24,6 +24,8 @@ const ASSETS = [
   './css/pages/settings.css',
   './css/pages/weeklyReview.css',
   './css/pages/game.css',
+  './css/pages/update.css',
+  './css/theme.css',
   './manifest.json',
   './js/main.js',
   './js/legacy.js',
@@ -57,8 +59,7 @@ const ASSETS = [
   './js/features/game/canvas.js',
   './js/features/prayer.js',
   './js/features/weeklyReview.js',
-  './js/pdf/generator.js',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@600;700&display=swap'
+  './js/pdf/generator.js'
 ];
 
 self.addEventListener('install', e => {

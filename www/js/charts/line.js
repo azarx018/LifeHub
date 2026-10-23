@@ -15,7 +15,7 @@ export function buildLineChartSVG(points, opts = {}) {
   const {
     width = 300, height = 130,
     padTop = 18, padBottom = 24, padX = 10,
-    color = '#6C63FF',
+    color = '#5f8d62',
     maxValue = null,       // kalau null, dihitung otomatis dari data
     target = null,         // gambar garis putus-putus horizontal (misal target tidur 8 jam)
     valueSuffix = '',      // misal '%' atau 'j' (jam)

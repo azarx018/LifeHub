@@ -10,7 +10,7 @@
   font-size:.75rem;cursor:pointer;color:var(--text2);
   background:var(--bg3);transition:all var(--transition);
 }
-.jcal-day.has-entry{background:rgba(108,99,255,.15);color:var(--primary);font-weight:600}
+.jcal-day.has-entry{background:rgba(95,141,98,.15);color:var(--primary);font-weight:600}
 .jcal-day.today{background:var(--primary);color:white;font-weight:700}
 .jcal-day.selected{outline:2px solid var(--primary);outline-offset:1px;font-weight:600}
 .jcal-day.empty{background:transparent}

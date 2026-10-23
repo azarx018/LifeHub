@@ -4,17 +4,14 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
   <title>LifeHub</title>
-  <meta name="description" content="Personal Life Management App — v6.6.0"/>
-  <meta name="theme-color" content="#6C63FF"/>
+  <meta name="description" content="Personal Life Management App — v6.7.0"/>
+  <meta name="theme-color" content="#f3f4ee"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
   <meta name="apple-mobile-web-app-title" content="LifeHub"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link rel="icon" type="image/png" href="icon-192.png"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="css/base.css"/>
   <link rel="stylesheet" href="css/components.css"/>
   <link rel="stylesheet" href="css/pages/dashboard.css"/>
@@ -31,6 +28,7 @@
   <link rel="stylesheet" href="css/pages/weeklyReview.css"/>
   <link rel="stylesheet" href="css/pages/game.css"/>
   <link rel="stylesheet" href="css/pages/update.css"/>
+  <link rel="stylesheet" href="css/theme.css"/>
 </head>
 <body>
 
@@ -40,7 +38,7 @@
     <div class="splash-logo">
       <svg viewBox="0 0 60 60" fill="none" width="72" height="72">
         <circle cx="30" cy="30" r="30" fill="url(#sg)"/>
-        <defs><linearGradient id="sg" x1="0" y1="0" x2="60" y2="60"><stop offset="0%" stop-color="#6C63FF"/><stop offset="100%" stop-color="#FF6584"/></linearGradient></defs>
+        <defs><linearGradient id="sg" x1="0" y1="0" x2="60" y2="60"><stop offset="0%" stop-color="#4a6a4c"/><stop offset="100%" stop-color="#9bc196"/></linearGradient></defs>
         <path d="M18 30L26 38L42 22" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
@@ -58,7 +56,7 @@
       <div class="sidebar-logo">
         <svg viewBox="0 0 40 40" fill="none" width="28" height="28">
           <circle cx="20" cy="20" r="20" fill="url(#ng)"/>
-          <defs><linearGradient id="ng" x1="0" y1="0" x2="40" y2="40"><stop offset="0%" stop-color="#6C63FF"/><stop offset="100%" stop-color="#FF6584"/></linearGradient></defs>
+          <defs><linearGradient id="ng" x1="0" y1="0" x2="40" y2="40"><stop offset="0%" stop-color="#4a6a4c"/><stop offset="100%" stop-color="#9bc196"/></linearGradient></defs>
           <path d="M12 20L18 26L28 14" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <span>LifeHub</span>
@@ -246,10 +244,10 @@
             <div class="habit-streak-legend">
               <span class="streak-legend-label">Sedikit</span>
               <span class="streak-legend-box" style="background:var(--bg3)"></span>
-              <span class="streak-legend-box" style="background:#c4b5fd"></span>
-              <span class="streak-legend-box" style="background:#8b5cf6"></span>
-              <span class="streak-legend-box" style="background:#6C63FF"></span>
-              <span class="streak-legend-box" style="background:#4c1d95"></span>
+              <span class="streak-legend-box" style="background:var(--lv1)"></span>
+              <span class="streak-legend-box" style="background:var(--lv2)"></span>
+              <span class="streak-legend-box" style="background:var(--primary)"></span>
+              <span class="streak-legend-box" style="background:var(--lv4)"></span>
               <span class="streak-legend-label">Banyak</span>
             </div>
           </div>
@@ -540,11 +538,10 @@
             <div class="settings-item settings-info about-changelog">
               <p><strong>Yang baru di update ini</strong></p>
               <ul>
-                <li>Todo sekarang per hari, sama seperti Habit dan Sholat: tiap hari list-nya berganti otomatis.</li>
-                <li>Todo hari-hari sebelumnya tetap tersimpan — geser tanggal dengan tombol ‹ › untuk melihatnya.</li>
-                <li>Todo yang sudah ada otomatis masuk ke tanggal saat dibuat.</li>
-                <li>Dashboard hanya menampilkan todo hari ini.</li>
-                <li>Bagian Tentang kini hanya berisi deskripsi aplikasi dan changelog update ini.</li>
+                <li>Tampilan baru: palet sage yang tenang, kartu pastel, dan efek kaca. Dark mode ikut dirapikan.</li>
+                <li>Bilah navigasi bawah kini berupa pil kaca ringkas dengan penanda yang meluncur.</li>
+                <li>Progres hari ini di Dashboard memakai bar horizontal, menggantikan grafik donat.</li>
+                <li>Animasi lebih halus dan hemat baterai. Font sistem dipakai, tidak perlu unduh font lagi.</li>
               </ul>
             </div>
           </div>
@@ -572,6 +569,7 @@
   <a href="#" class="bnav-item" data-page="journal">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
     <small>Journal</small></a>
+  <i class="bnav-ind"></i>
 </nav>
 
 <!-- Backdrop -->
@@ -630,7 +628,7 @@
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Warna</label><input type="color" id="habitColor" class="input-field color-input" value="#6C63FF"/></div>
+      <div class="form-group"><label>Warna</label><input type="color" id="habitColor" class="input-field color-input" value="#5f8d62"/></div>
     </div>
   </div>
   <div class="modal-footer">

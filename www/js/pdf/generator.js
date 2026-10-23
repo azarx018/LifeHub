@@ -118,7 +118,7 @@ export async function generatePDF() {
     return;
   }
 
-  const progressBar = (pct,color='#6C63FF') =>
+  const progressBar = (pct,color='#5f8d62') =>
     `<div style="background:#eee;border-radius:4px;height:8px;overflow:hidden;margin:4px 0">
       <div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div>
     </div>`;
@@ -126,7 +126,7 @@ export async function generatePDF() {
   const sholatRows = Object.entries(prayerNames).map(([k,n])=>{
     const cnt = rSholat.filter(s=>s.prayers&&s.prayers[k]).length;
     const pct2= periodDays?Math.round(cnt/periodDays*100):0;
-    return `<tr><td>${n}</td><td>${cnt}/${periodDays} hari</td><td>${pct2}%</td><td>${progressBar(pct2,'#6C63FF')}</td></tr>`;
+    return `<tr><td>${n}</td><td>${cnt}/${periodDays} hari</td><td>${pct2}%</td><td>${progressBar(pct2,'#5f8d62')}</td></tr>`;
   }).join('');
 
   const html = `<!DOCTYPE html>
@@ -138,20 +138,20 @@ export async function generatePDF() {
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;padding:0}
   .page{padding:36px 40px;max-width:800px;margin:0 auto}
-  h1{font-size:24px;color:#6C63FF;margin-bottom:4px}
+  h1{font-size:24px;color:#5f8d62;margin-bottom:4px}
   .subtitle{color:#888;font-size:12px;margin-bottom:28px}
   .section{margin-bottom:24px;page-break-inside:avoid}
-  .section-title{font-size:15px;font-weight:bold;color:#6C63FF;border-bottom:2px solid #6C63FF;padding-bottom:5px;margin-bottom:12px}
+  .section-title{font-size:15px;font-weight:bold;color:#5f8d62;border-bottom:2px solid #5f8d62;padding-bottom:5px;margin-bottom:12px}
   .summary-box{background:#f0eeff;border-radius:8px;padding:14px 16px;margin-bottom:22px;line-height:1.7;font-size:13px}
   .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
   .stat-box{background:#f5f6ff;border-radius:8px;padding:10px 12px;text-align:center}
-  .stat-val{font-size:22px;font-weight:bold;color:#6C63FF}
+  .stat-val{font-size:22px;font-weight:bold;color:#5f8d62}
   .stat-lbl{font-size:10px;color:#888;margin-top:2px}
   table{width:100%;border-collapse:collapse;font-size:12px}
   td,th{padding:7px 10px;text-align:left;border-bottom:1px solid #eee}
   th{background:#f5f6ff;font-weight:bold;color:#333}
   .bar{background:#eee;border-radius:4px;height:8px;overflow:hidden}
-  .bar-fill{height:100%;border-radius:4px;background:#6C63FF}
+  .bar-fill{height:100%;border-radius:4px;background:#5f8d62}
   .mood-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
   .mood-chip{background:#f5f6ff;border-radius:20px;padding:4px 12px;font-size:12px}
   .footer{text-align:center;color:#aaa;font-size:11px;margin-top:32px;padding-top:12px;border-top:1px solid #eee}
@@ -203,7 +203,7 @@ export async function generatePDF() {
     <div class="section-title">🔥 Habit Tracker</div>
     ${habitStats.length===0?'<p style="color:#aaa;font-size:12px">Belum ada habit.</p>':
     `<table><tr><th>Habit</th><th>Dilakukan</th><th>Dari (Hari)</th><th>Persentase</th><th>Progress</th></tr>
-      ${habitStats.map(h=>`<tr><td>${h.icon||'🔥'} ${escHtml(h.name)}${h.isNew?' <em style="color:#6C63FF;font-size:10px">(habit baru)</em>':''}</td><td>${h.done} kali</td><td>${h.possible} hari</td><td>${h.pct}%</td><td>${progressBar(h.pct,h.color||'#6C63FF')}</td></tr>`).join('')}
+      ${habitStats.map(h=>`<tr><td>${h.icon||'🔥'} ${escHtml(h.name)}${h.isNew?' <em style="color:#5f8d62;font-size:10px">(habit baru)</em>':''}</td><td>${h.done} kali</td><td>${h.possible} hari</td><td>${h.pct}%</td><td>${progressBar(h.pct,h.color||'#5f8d62')}</td></tr>`).join('')}
     </table>`}
   </div>
 

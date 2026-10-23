@@ -45,5 +45,5 @@
 .sleep-warn-effects{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .sleep-warn-effect-title{font-size:.75rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
 .sleep-warn-effect{font-size:.8rem;color:var(--text2);padding:4px 0}
-.sleep-warn-tip{font-size:.78rem;color:var(--text2);background:rgba(108,99,255,.08);border-radius:var(--radius-sm);padding:10px;line-height:1.5;border-left:3px solid var(--primary)}
+.sleep-warn-tip{font-size:.78rem;color:var(--text2);background:rgba(95,141,98,.08);border-radius:var(--radius-sm);padding:10px;line-height:1.5;border-left:3px solid var(--primary)}
 

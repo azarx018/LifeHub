@@ -49,7 +49,7 @@ async function renderCountdownSettings() {
   const listEl = el('countdownList'); if (!listEl) return;
   const list = await getCountdownTargets();
   if (!list.length) {
-    listEl.innerHTML = '<p style="font-size:.8rem;color:var(--text3);margin-bottom:8px">Belum ada target countdown</p>';
+    listEl.innerHTML = '<p style="font-size:.8rem;color:var(--text3);padding:10px 14px 4px">Belum ada target countdown</p>';
     return;
   }
   const sorted = [...list].sort((a, b) => daysDiff(a.date) - daysDiff(b.date));
@@ -153,6 +153,9 @@ export function saveSettings() {
 }
 export function applySettings() {
   document.documentElement.setAttribute('data-theme', S.settings.darkMode ? 'dark' : '');
+  // Warna status bar browser/PWA ikut tema (v6.7.0)
+  const tc = document.querySelector('meta[name="theme-color"]');
+  if (tc) tc.setAttribute('content', S.settings.darkMode ? '#0a0e0a' : '#f3f4ee');
 }
 export async function exportData() {
   const data = {};

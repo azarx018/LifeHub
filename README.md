@@ -69,6 +69,7 @@ lifehub/
     ├── css/
     │   ├── base.css             (design tokens, layout, shell)
     │   ├── components.css       (button, card, modal, dll — dipakai lintas halaman)
+    │   ├── theme.css            (lapisan desain v6.7: kaca, tab bar pil, gerak — dimuat terakhir)
     │   └── pages/               (1 file CSS per halaman)
     └── js/
         ├── main.js               (entry point — satu-satunya yang diload index.html)

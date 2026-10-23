@@ -26,7 +26,7 @@
   font-size:.8rem;font-weight:700;color:var(--text);z-index:1;
 }
 .water-info{flex:1}
-.water-count{font-family:'Poppins',sans-serif;font-size:2rem;font-weight:700;color:var(--primary)}
+.water-count{font-family:var(--font);font-size:2rem;font-weight:700;color:var(--primary)}
 .water-count span{font-size:.95rem;font-weight:400;color:var(--text3)}
 .water-target-text{font-size:.82rem;color:var(--text3);margin-bottom:11px}
 .water-actions{display:flex;gap:7px}

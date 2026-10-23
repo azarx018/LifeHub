@@ -4,44 +4,66 @@
    global, dan responsive breakpoints. Dipindah dari style.css v5.7 —
    tidak ada perubahan nilai/aturan, cuma dikelompokkan ulang. */
 
-/* ===== LIFEHUB v1.2 ===== */
+/* ===== LIFEHUB v6.7 — Sage + Glass tokens ===== */
 :root {
-  --primary: #6C63FF;
-  --primary-light: #8B84FF;
-  --secondary: #FF6584;
-  --accent: #43E97B;
-  --warning: #F9CA24;
-  --danger: #FF6B6B;
-  --bg: #F4F6FF;
+  --font: -apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --primary: #4a6a4c;
+  --primary-light: #6f9272;
+  --on-primary: #FFFFFF;
+  --secondary: #d9735f;
+  --accent: #6fae7a;
+  --warning: #e9a23b;
+  --danger: #e5645a;
+  --bg: #f3f4ee;
   --bg2: #FFFFFF;
-  --bg3: #EEF0FF;
+  --bg3: #eceee6;
   --surface: #FFFFFF;
-  --surface2: #F8F9FF;
-  --border: #E8EAFF;
-  --text: #1a1a2e;
-  --text2: #555577;
-  --text3: #9999BB;
+  --surface2: #f7f8f3;
+  --border: rgba(30,40,28,.09);
+  --text: #1b2019;
+  --text2: #565d52;
+  --text3: #7b8277;
+  --glass: rgba(255,255,255,.74);
+  --tint-blue: #e3edf6;
+  --tint-peach: #f7e8dc;
+  --tint-lav: #ece8f7;
+  --tint-yel: #f4efd6;
+  --tint-sage: #e6eee3;
+  --g1: rgba(122,152,119,.34);
+  --g2: rgba(247,206,178,.55);
+  --g3: rgba(180,205,235,.40);
   --sidebar-w: 256px;
   --topbar-h: 56px;
   --bnav-h: 60px;
-  --radius: 16px;
-  --radius-sm: 10px;
-  --shadow: 0 2px 12px rgba(108,99,255,0.07);
-  --shadow-md: 0 6px 24px rgba(108,99,255,0.12);
+  --radius: 22px;
+  --radius-sm: 14px;
+  --shadow: 0 0 0 .5px rgba(30,40,28,.06),0 1px 2px rgba(30,40,28,.04),0 14px 32px -14px rgba(30,40,28,.16);
+  --shadow-md: 0 20px 50px -16px rgba(30,40,28,.28);
   --transition: 0.22s cubic-bezier(.4,0,.2,1);
 }
 [data-theme="dark"] {
-  --bg: #0f0f1a;
-  --bg2: #1a1a2e;
-  --bg3: #1e1e30;
-  --surface: #1e1e30;
-  --surface2: #252540;
-  --border: #2e2e48;
-  --text: #e8e8ff;
-  --text2: #aaaacc;
-  --text3: #666688;
-  --shadow: 0 2px 12px rgba(0,0,0,0.35);
-  --shadow-md: 0 6px 24px rgba(0,0,0,0.5);
+  --primary: #5f8f63;
+  --primary-light: #a9d4a2;
+  --bg: #0a0e0a;
+  --bg2: #131914;
+  --bg3: #1c241b;
+  --surface: #131914;
+  --surface2: #1a211a;
+  --border: rgba(255,255,255,.075);
+  --text: #eef2ea;
+  --text2: #b3bcae;
+  --text3: #8b9587;
+  --glass: rgba(20,27,20,.78);
+  --tint-blue: #16222e;
+  --tint-peach: #2a2019;
+  --tint-lav: #221f33;
+  --tint-yel: #272414;
+  --tint-sage: #1a2619;
+  --g1: rgba(80,130,85,.28);
+  --g2: rgba(140,95,65,.15);
+  --g3: rgba(60,95,150,.18);
+  --shadow: 0 0 0 .5px rgba(255,255,255,.07),inset 0 1px 0 rgba(255,255,255,.05),0 14px 32px -14px rgba(0,0,0,.6);
+  --shadow-md: 0 20px 50px -16px rgba(0,0,0,.8);
 }
 
 /* ===== RESET ===== */
@@ -52,7 +74,7 @@ html{font-size:16px;-webkit-text-size-adjust:100%;height:100%}
    yang bener (lihat catatan panjang di .app/.main-wrapper/.page-container di
    bawah) — sekarang body dikunci total, scroll dipindah ke 1 container kecil
    yang terisolasi (.page-container). */
-body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);height:100%;overflow:hidden;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);background:var(--bg);color:var(--text);height:100%;overflow:hidden;-webkit-font-smoothing:antialiased}
 a{text-decoration:none;color:inherit}
 button{cursor:pointer;border:none;background:none;font-family:inherit;-webkit-tap-highlight-color:transparent}
 input,textarea,select{font-family:inherit}
@@ -61,14 +83,14 @@ ul{list-style:none}
 /* ===== SPLASH ===== */
 .splash{
   position:fixed;inset:0;
-  background:linear-gradient(135deg,#6C63FF 0%,#FF6584 100%);
+  background:linear-gradient(145deg,#2f4a33 0%,#16261a 100%);
   display:flex;align-items:center;justify-content:center;
   z-index:9999;transition:opacity .5s ease,visibility .5s ease;
 }
 .splash.fade-out{opacity:0;visibility:hidden;pointer-events:none}
 .splash-content{text-align:center;color:white}
 .splash-logo svg{width:72px;height:72px;animation:splashPulse 1.5s ease-in-out infinite}
-.splash-title{font-family:'Poppins',sans-serif;font-size:2.2rem;font-weight:700;margin:10px 0 6px}
+.splash-title{font-family:var(--font);font-size:2.2rem;font-weight:700;margin:10px 0 6px}
 .splash-sub{font-size:.9rem;opacity:.85}
 @keyframes splashPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 
@@ -110,7 +132,7 @@ ul{list-style:none}
 }
 .sidebar-logo{
   display:flex;align-items:center;gap:9px;
-  font-family:'Poppins',sans-serif;font-weight:700;font-size:1.15rem;color:var(--primary);
+  font-family:var(--font);font-weight:700;font-size:1.15rem;color:var(--primary);
 }
 .sidebar-close{
   width:30px;height:30px;border-radius:50%;
@@ -125,7 +147,7 @@ ul{list-style:none}
   transition:all var(--transition);margin-bottom:2px;
 }
 .nav-item:hover{background:var(--bg3);color:var(--primary)}
-.nav-item.active{background:linear-gradient(135deg,rgba(108,99,255,.13),rgba(255,101,132,.07));color:var(--primary);font-weight:600}
+.nav-item.active{background:linear-gradient(135deg,rgba(95,141,98,.13),rgba(217,115,95,.07));color:var(--primary);font-weight:600}
 .nav-icon{display:flex;align-items:center;justify-content:center;width:22px;height:22px;flex-shrink:0}
 .nav-icon svg{width:18px;height:18px}
 
@@ -149,7 +171,7 @@ ul{list-style:none}
   display:flex;align-items:center;gap:10px;
   padding:0 14px;
   background:var(--surface);border-bottom:1px solid var(--border);
-  z-index:100;box-shadow:0 1px 6px rgba(108,99,255,.05);
+  z-index:100;box-shadow:0 1px 6px rgba(95,141,98,.05);
 }
 .menu-btn{
   width:38px;height:38px;
@@ -157,7 +179,7 @@ ul{list-style:none}
   border-radius:var(--radius-sm);flex-shrink:0;
 }
 .menu-btn span{display:block;width:20px;height:2px;background:var(--text);border-radius:2px;transition:all var(--transition)}
-.topbar-title{flex:1;font-family:'Poppins',sans-serif;font-size:1rem;font-weight:700;color:var(--text)}
+.topbar-title{flex:1;font-family:var(--font);font-size:1rem;font-weight:700;color:var(--text)}
 .topbar-actions{display:flex;align-items:center;gap:8px}
 
 /* ===== PAGE CONTAINER ===== */

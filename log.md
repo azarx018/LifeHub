@@ -6,6 +6,52 @@ Capacitor. Format: versi terbaru di paling atas.
 
 ---
 
+## v6.7.0 — Desain baru: Sage + Glass
+
+Redesign visual menyeluruh. Stack TIDAK diganti (tetap Vanilla JS + Capacitor):
+bottleneck app ini bukan framework, jadi re-skin lewat design token + satu
+lapisan CSS paling aman dan paling ringan. Tidak ada perubahan data/DB.
+
+### 🎨 Design system
+**File baru**: `www/css/theme.css` (dimuat terakhir, juga masuk cache `sw.js`)
+**File diubah**: `css/base.css` (token baru), semua `css/pages/*.css` (warna ungu -> token), `index.html`
+
+- Palet sage + kartu pastel (biru, peach, lavender, kuning). Dark mode jadi prioritas:
+  permukaan lebih dalam, aksen sage terang, tint pastel gelap.
+- Warna hardcoded ungu di CSS/JS diganti token (`--primary`, `--secondary`, dst).
+- Heatmap streak Habit memakai ramp sage (`--lv1..--lv4`), ikut dark mode.
+
+### 🧭 Navigasi & shell
+- Bottom nav jadi pil kaca ringkas (ikon saja) dengan penanda aktif yang meluncur
+  (CSS `:has()`, fallback otomatis bila WebView lama). Konten memudar di tepi bawah.
+- Topbar dan modal memakai efek kaca. Modal memakai animasi pegas.
+
+### 📊 Dashboard
+**File diubah**: `features/dashboard.js`
+- Donat diganti bar progres horizontal (Todo, Habit, Sholat, Air). Bar hanya
+  menganimasikan yang berubah saat dashboard dirender ulang.
+- Palet langit hero per waktu diredam supaya serasi dengan palet baru.
+
+### ⚡ Performa
+- Google Fonts (3 request jaringan) dihapus; pakai font sistem (SF/Roboto).
+- Animasi hanya `transform`/`opacity`; animasi masuk halaman hanya saat pindah
+  halaman, tidak diulang tiap render. `backdrop-filter` cuma di 3 elemen kecil.
+- `prefers-reduced-motion` dihormati. `theme-color` browser ikut tema.
+
+### 🐛 Bug yang ketemu & diperbaiki saat review (semua halaman, dark + light)
+- Bar chart Statistik & Sleep runtuh jadi garis tipis (bug lama sejak sebelum v6.7): tinggi persen butuh induk bertinggi pasti. Sekarang bar tampil normal. (`css/theme.css`)
+- Input warna di form Habit sempat jatuh ke hitam karena default `var(--primary)` tidak valid untuk `<input type=color>`; diganti hex `#5f8d62`.
+- Checkbox native (Todo, Goals, Dashboard) putih mencolok di dark; diganti checkbox bulat sage.
+- Kotak error App Update merah muda terang di dark; kini tint transparan.
+- Warna bar Sleep (coral/hijau neon/abu terang) diredam supaya serasi dengan palet.
+- Teks "Belum ada target countdown" di Pengaturan menempel ke tepi; diberi padding.
+- Native control (date picker, scrollbar) ikut tema lewat `color-scheme`.
+
+### Catatan
+- Halaman Game: UI-nya ikut palet baru, tapi pixel art di canvas sengaja tidak diubah.
+
+---
+
 ## v6.6.0 — Todo jadi per hari + Tentang disederhanakan
 
 ### ✨ Todo per hari (sama seperti Habit & Sholat)

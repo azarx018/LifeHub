@@ -7,7 +7,7 @@
   background:var(--surface);border:1.5px solid var(--border);
   border-radius:var(--radius);padding:13px;text-align:center;
 }
-.stat-card-val{font-family:'Poppins',sans-serif;font-size:1.7rem;font-weight:700;color:var(--primary)}
+.stat-card-val{font-family:var(--font);font-size:1.7rem;font-weight:700;color:var(--primary)}
 .stat-card-lbl{font-size:.72rem;color:var(--text3);margin-top:3px}
 .stats-charts{display:flex;flex-direction:column;gap:13px}
 .chart-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:15px}

@@ -12,8 +12,8 @@
 .game-bar-wrap{flex:1;background:var(--bg3);border-radius:6px;height:10px;overflow:hidden}
 .game-bar-fill{height:100%;border-radius:6px;transition:width .4s ease}
 .game-stat-val{font-size:.72rem;font-weight:600;color:var(--text);min-width:48px;text-align:right}
-.game-level-badge{display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(108,99,255,.1),rgba(255,101,132,.08));border:1.5px solid rgba(108,99,255,.2);border-radius:var(--radius)}
-.game-level-num{font-family:'Poppins',sans-serif;font-size:2rem;font-weight:700;color:var(--primary);line-height:1}
+.game-level-badge{display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(95,141,98,.1),rgba(217,115,95,.08));border:1.5px solid rgba(95,141,98,.2);border-radius:var(--radius)}
+.game-level-num{font-family:var(--font);font-size:2rem;font-weight:700;color:var(--primary);line-height:1}
 .game-level-info{flex:1}
 .game-level-title{font-size:.85rem;font-weight:700;color:var(--text)}
 .game-level-xp{font-size:.72rem;color:var(--text3);margin-top:2px}
@@ -36,9 +36,9 @@
 .game-skill-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .skill-btn{padding:6px 12px;border-radius:8px;font-size:.76rem;font-weight:600;border:1.5px solid;transition:all var(--transition);-webkit-tap-highlight-color:transparent}
 .skill-btn:disabled{opacity:.4;cursor:not-allowed}
-.game-freedom-banner{background:linear-gradient(135deg,#FFD700,#FF6584,#6C63FF);border-radius:var(--radius);padding:20px;text-align:center;color:white;margin-bottom:12px}
+.game-freedom-banner{background:linear-gradient(135deg,#FFD700,var(--secondary),var(--primary));border-radius:var(--radius);padding:20px;text-align:center;color:white;margin-bottom:12px}
 .freedom-emoji{font-size:3rem;margin-bottom:8px}
-.freedom-title{font-family:'Poppins',sans-serif;font-size:1.3rem;font-weight:700;margin-bottom:4px}
+.freedom-title{font-family:var(--font);font-size:1.3rem;font-weight:700;margin-bottom:4px}
 .freedom-desc{font-size:.85rem;opacity:.9}
 .game-achievement{display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:6px}
 .achievement-icon{font-size:1.4rem;flex-shrink:0}

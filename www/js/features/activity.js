@@ -189,7 +189,7 @@ export async function renderActivity() {
         const pName = {subuh:'Subuh',dzuhur:'Dzuhur',ashar:'Ashar',maghrib:'Maghrib',isya:'Isya'}[p];
         return `<div class="activity-progress-row">
           <span class="activity-progress-label">${pName}</span>
-          <div class="activity-progress-bar"><div class="activity-progress-fill" style="width:${pct2}%;background:#6C63FF"></div></div>
+          <div class="activity-progress-bar"><div class="activity-progress-fill" style="width:${pct2}%;background:#5f8d62"></div></div>
           <span class="activity-progress-pct">${doneCnt}/${periodDays}</span>
         </div>`;
       }).join('')}
@@ -204,7 +204,7 @@ export async function renderActivity() {
       ${habitStats.length === 0 ? '<p class="activity-empty">Belum ada habit</p>' :
         habitStats.map(h => `<div class="activity-progress-row">
           <span class="activity-progress-label" style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.icon||'🔥'} ${escHtml(h.name)}${h.isNew?'<span style="font-size:.6rem;background:var(--primary);color:white;padding:1px 4px;border-radius:4px;margin-left:3px">baru</span>':''}</span>
-          <div class="activity-progress-bar"><div class="activity-progress-fill" style="width:${h.pct}%;background:${h.color||'#6C63FF'}"></div></div>
+          <div class="activity-progress-bar"><div class="activity-progress-fill" style="width:${h.pct}%;background:${h.color||'#5f8d62'}"></div></div>
           <span class="activity-progress-pct">${h.done}/${h.possible} (${h.pct}%)</span>
         </div>`).join('')
       }
@@ -264,7 +264,7 @@ export async function renderActivity() {
       ${goalStats.length === 0 ? '<p class="activity-empty">Belum ada goals</p>' :
         goalStats.map(g => `<div class="activity-progress-row">
           <span class="activity-progress-label" style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.icon||'🎯'} ${escHtml(g.title)}</span>
-          <div class="activity-progress-bar"><div class="activity-progress-fill" style="width:${g.pct}%;background:#6C63FF"></div></div>
+          <div class="activity-progress-bar"><div class="activity-progress-fill" style="width:${g.pct}%;background:#5f8d62"></div></div>
           <span class="activity-progress-pct">${g.pct}%</span>
         </div>`).join('')
       }

@@ -13,7 +13,7 @@ export async function renderGoals() {
     list.innerHTML = '<div class="empty-state"><div class="empty-icon">📚</div><p>Belum ada goals. Tambah tujuanmu!</p></div>';
     return;
   }
-  const colors = ['#6C63FF','#FF6584','#43E97B','#F9CA24','#4ECDC4','#FF8C42'];
+  const colors = ['#5f8d62','#e7806f','#43E97B','#F9CA24','#4ECDC4','#FF8C42'];
   goals.forEach((g, gi) => {
     const gMilestones = milestones.filter(m => m.goalId === g.id);
     const color = colors[gi % colors.length];
