@@ -74,6 +74,8 @@ export function setupEvents() {
   // Nav
   qsa('.nav-item').forEach(n => n.addEventListener('click', e => { e.preventDefault(); navigateTo(n.dataset.page); }));
   qsa('.bnav-item').forEach(n => n.addEventListener('click', e => { e.preventDefault(); navigateTo(n.dataset.page); }));
+  qsa('.more-row[data-page]').forEach(n => n.addEventListener('click', e => { e.preventDefault(); navigateTo(n.dataset.page); }));
+  el('moreDarkToggle').addEventListener('change', e => { S.settings.darkMode = e.target.checked; saveSettings(); });
   // Modal close
   el('modalBackdrop').addEventListener('click', closeAllModals);
   qsa('.modal-close').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.modal)));

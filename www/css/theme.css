@@ -115,4 +115,126 @@ input[type=checkbox]:not(.toggle input):checked{background:var(--primary);border
 input[type=checkbox]:not(.toggle input):checked::after{transform:rotate(-45deg) scale(1)}
 input[type=checkbox]:not(.toggle input):active{transform:scale(.86)}
 
+
+/* ===== TAHAP 1 — Dashboard & Todo ===== */
+/* Dashboard: urutan kartu ala prototype lewat CSS order (HTML & JS tidak dipindah) */
+.score-card{order:-6;grid-column:span 2;color:#fff;border-radius:30px;padding:22px;background:radial-gradient(90% 120% at 0% 0%,#6b8f6c,transparent 62%),linear-gradient(150deg,#3a573d,#1e3322);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 24px 50px -18px rgba(30,60,35,.6)}
+.score-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.score-lbl{font-size:.78rem;font-weight:600;opacity:.72}
+.score-big{font-size:3.1rem;font-weight:720;letter-spacing:-.045em;line-height:1.05;font-variant-numeric:tabular-nums}
+.score-big small{font-size:1.2rem;font-weight:700;opacity:.65;letter-spacing:0;margin-left:2px}
+.score-chip{font-size:.74rem;font-weight:650;padding:7px 12px;border-radius:99px;background:rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+.score-card .prog-top b{color:rgba(255,255,255,.85)}
+.score-card .prog-track{background:rgba(255,255,255,.14)}
+.water-quick-card{order:-5}
+.sleep-quick-card{order:-4}
+.mood-card{order:-3;grid-column:span 2}
+.mood-row{justify-content:space-between}
+.prayer-countdown-card{order:-2}
+.sholat-card{order:1}
+.pixel-card{order:2;grid-column:span 2}
+.insight-card,.countdown-card{order:3}
+.quote-card{order:4}
+.stats-quick-card{order:5}
+
+/* Todo: daftar satu kartu, baris dengan garis tipis */
+.todo-list{gap:0;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:2px 16px}
+.todo-list:has(.empty-state){background:none;box-shadow:none;padding:0}
+.todo-item{background:transparent;border:0;border-bottom:.5px solid var(--border);border-radius:0;padding:15px 0;gap:12px;align-items:center}
+.todo-item:last-child{border-bottom:0}
+.todo-item:active{border-color:var(--border);background:transparent}
+.todo-body{cursor:pointer}
+.todo-text{font-size:.95rem;font-weight:600;letter-spacing:-.01em}
+.todo-badge{padding:2px 0;background:none;font-weight:600;color:var(--text3)}
+.badge-high,.badge-medium,.badge-low{background:none}
+.badge-high::before,.badge-medium::before,.badge-low::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:1px;background:var(--pc)}
+.badge-high{--pc:#e5645a;color:var(--text3)}.badge-medium{--pc:#e9a23b;color:var(--text3)}.badge-low{--pc:#6ea6d8;color:var(--text3)}
+.badge-cat,.badge-date{background:none;color:var(--text3)}
+.todo-actions .icon-btn:first-child{display:none}
+.todo-actions .icon-btn{background:none;opacity:.45;width:30px;height:30px}
+.todo-actions .icon-btn:active{opacity:1}
+
+/* Segmented control (status) + chip prioritas */
+.seg{display:flex;background:var(--bg3);border-radius:14px;padding:3px;gap:0;margin-bottom:12px}
+.seg .filter-btn{flex:1;background:none;border:0;border-radius:11px;padding:8px 0;font-size:.8rem;font-weight:650;color:var(--text3);transition:background-color .2s,color .2s,box-shadow .2s}
+.seg .filter-btn.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.1)}
+[data-theme="dark"] .seg .filter-btn.active{background:#2c382b;color:var(--text)}
+.chips .filter-btn[data-priority]:not([data-priority=all])::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;vertical-align:1px;background:var(--pc,transparent)}
+.chips [data-priority=high]{--pc:#e5645a}.chips [data-priority=medium]{--pc:#e9a23b}.chips [data-priority=low]{--pc:#6ea6d8}
+
+/* Navigasi tanggal (Todo, Habit, Sholat): kartu dengan panah */
+.habit-date-nav,.sholat-date-nav{justify-content:space-between;gap:0;background:var(--surface);border-radius:20px;padding:6px;box-shadow:var(--shadow);margin-bottom:14px}
+.habit-date-nav button,.sholat-date-nav button{width:40px;height:40px;border-radius:14px;background:none;font-size:1.2rem;color:var(--primary)}
+[data-theme="dark"] .habit-date-nav button,[data-theme="dark"] .sholat-date-nav button{color:var(--primary-light)}
+.habit-date-nav button:active,.sholat-date-nav button:active{background:var(--tint-sage);color:var(--primary)}
+.habit-date-nav span,.sholat-date-nav span{font-weight:700;font-size:.9rem;color:var(--text)}
+
+/* Tombol tambah todo = FAB */
+#btnAddTodo{position:fixed;right:20px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:95;width:58px;height:58px;padding:0;border-radius:50%;font-size:0;background:linear-gradient(145deg,#7fa87d,var(--primary));color:var(--on-primary);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 14px 30px -6px rgba(50,90,55,.55)}
+#btnAddTodo::before{content:"+";font-size:2rem;font-weight:400;line-height:58px}
+#btnAddTodo:active{transform:scale(.88) rotate(90deg)}
+@media (min-width:768px){#btnAddTodo{bottom:28px;right:28px}}
+.progress-bar-wrap{height:8px;border-radius:99px}.progress-bar-fill{border-radius:99px}
+
+
+/* ===== TAHAP 2 — Habit & Sholat ===== */
+.habit-list{gap:12px}
+.habit-item{border:0;border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.habit-item-header{gap:12px;margin-bottom:4px}
+.habit-icon-badge{width:46px;height:46px;border-radius:16px;font-size:1.3rem}
+.habit-info{cursor:pointer}
+.habit-name{font-size:1rem;font-weight:650;letter-spacing:-.015em}
+.habit-streak{font-size:.74rem}
+.habit-check-btn{width:36px;height:36px}
+.habit-check-btn.checked{background:var(--primary);border-color:var(--primary)}
+.habit-week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:14px}
+.hw-day{text-align:center;font-size:.62rem;font-weight:600;color:var(--text3)}
+.hw-day i{display:block;height:8px;border-radius:99px;background:var(--bg3);margin-bottom:6px;transition:background-color .3s}
+.hw-day.done i{background:var(--c)}
+.hw-day.miss i{box-shadow:inset 0 0 0 1.5px rgba(229,100,90,.5)}
+.hw-day.off{opacity:.4}
+.hw-day.sel{color:var(--text)}
+.hw-day.sel i{outline:2px solid var(--c);outline-offset:2px}
+.habit-stats-row{margin-top:10px;align-items:center}
+.habit-stats-row .icon-btn:first-child{display:none}
+.habit-stats-row .icon-btn{background:none;opacity:.45}
+.habit-stats-row .icon-btn:active{opacity:1}
+
+.sholat-summary{background:linear-gradient(155deg,var(--tint-sage),color-mix(in srgb,var(--tint-sage),var(--surface) 45%));border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.sholat-sum-lbl{font-size:.76rem;font-weight:650;color:var(--text3)}
+.sholat-sum-val{font-size:2.4rem;font-weight:720;letter-spacing:-.045em;line-height:1.1;margin-top:8px;font-variant-numeric:tabular-nums}
+.sholat-sum-val small{font-size:.85rem;font-weight:600;letter-spacing:0;color:var(--text3)}
+.sholat-sum-dots{display:flex;gap:6px;margin-top:14px}
+.sholat-sum-dots i{flex:1;height:8px;border-radius:99px;background:rgba(120,140,115,.22);transition:background-color .3s}
+.sholat-sum-dots i.on{background:var(--primary)}
+.sholat-list{gap:0;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:2px 16px}
+.sholat-item{background:transparent;border:0;border-bottom:.5px solid var(--border);border-radius:0;padding:14px 0}
+.sholat-item:last-child{border-bottom:0}
+.sholat-item.done{background:transparent;border-color:var(--border)}
+.sholat-item.done .sholat-name{color:var(--text3)}
+.sholat-name{font-size:.98rem;font-weight:650;letter-spacing:-.01em}
+.sholat-toggle{width:30px;height:30px;border-width:1.5px;border-color:var(--ck);background:transparent;transition:background-color .2s,border-color .2s,transform .35s cubic-bezier(.3,1.5,.5,1)}
+.sholat-toggle:not(.done) svg{opacity:0}
+.sholat-toggle.done{background:var(--primary);border-color:var(--primary)}
+.sholat-toggle:active{transform:scale(.86)}
+.sholat-week-grid{background:var(--surface);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);gap:4px}
+.sholat-week-dot{width:20px;height:20px;box-shadow:inset 0 0 0 1px var(--border)}
+.sholat-week-dot.done{background:var(--primary);box-shadow:none}
+
+
+/* ===== TAHAP 3 — Lainnya ===== */
+.more-profile{display:flex;align-items:center;gap:14px;background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.more-avatar{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#e9d8c6,#d3b9a0);color:#5b4636;font-weight:750;font-size:1.3rem;display:grid;place-items:center;flex:none}
+.more-name{font-size:1.1rem;font-weight:720;letter-spacing:-.02em}
+.more-sub{font-size:.78rem;color:var(--text3);margin-top:2px}
+.more-group-title{font-size:.78rem;font-weight:650;color:var(--text3);margin:22px 6px 8px}
+.more-group{background:var(--surface);border-radius:24px;overflow:hidden;box-shadow:var(--shadow)}
+.more-row{display:flex;align-items:center;gap:14px;padding:13px 16px;min-height:58px;position:relative;color:var(--text);text-decoration:none;transition:background-color .15s}
+.more-row+.more-row::before{content:"";position:absolute;top:0;left:62px;right:0;border-top:.5px solid var(--border)}
+a.more-row:active{background:var(--bg3)}
+.more-ic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:#fff;flex:none}
+.more-ic svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.more-t{flex:1;font-weight:600;font-size:.96rem}
+.more-chev{width:16px;height:16px;fill:none;stroke:var(--text3);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}

@@ -475,10 +475,10 @@ export async function renderDashboard() {
     const sholatDone = Object.values(todaySholatForDonut.prayers || {}).filter(Boolean).length;
     const todoActive = todayTodos; // donut = progres HARI INI (todo per hari)
     const segments = [
-      { label: 'Todo',   value: todoActive.filter(t => t.done).length, total: todoActive.length,  color: '#e7806f' },
-      { label: 'Habit',  value: doneHabits,  total: habits.length,                               color: '#7fb069' },
-      { label: 'Sholat', value: sholatDone,  total: 5,                                           color: '#5fb3c4' },
-      { label: 'Air',    value: wc,           total: wt,                                          color: '#5b9bd5' },
+      { label: 'Todo',   value: todoActive.filter(t => t.done).length, total: todoActive.length,  color: '#ff9f8f' },
+      { label: 'Habit',  value: doneHabits,  total: habits.length,                               color: '#a8dc82' },
+      { label: 'Sholat', value: sholatDone,  total: 5,                                           color: '#7fd3e4' },
+      { label: 'Air',    value: wc,           total: wt,                                          color: '#7ab8ec' },
     ];
     // Progres hari ini — bar horizontal (v6.7.0, pengganti donat).
     // Bar mulai dari nilai terakhir (window.__lhProg) supaya render ulang
@@ -489,8 +489,15 @@ export async function renderDashboard() {
       p: s.total ? Math.min(100, Math.round(s.value / s.total * 100)) : 0,
       start: prevProg[s.label] ?? 0
     }));
+    // Skor harian = rata-rata progres semua kategori (v6.7)
+    const score = rows.length ? Math.round(rows.reduce((a, r) => a + r.p, 0) / rows.length) : 0;
+    const chip = score >= 70 ? 'Mantap' : score >= 40 ? 'Terus lanjut' : 'Mulai pelan-pelan';
+    donutCard.classList.add('score-card');
     donutCard.innerHTML = `
-      <div class="card-label">Progres hari ini</div>
+      <div class="score-head">
+        <div><div class="score-lbl">Skor harianmu</div><div class="score-big">${score}<small>%</small></div></div>
+        <span class="score-chip">${chip}</span>
+      </div>
       <div class="prog-list">${rows.map(s => `
         <div class="prog-item">
           <div class="prog-top"><span><i style="background:${s.color}"></i>${s.label}</span><b>${s.value}/${s.total}</b></div>

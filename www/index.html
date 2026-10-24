@@ -202,24 +202,24 @@
       <section class="page" id="page-todo">
         <div class="page-toolbar">
           <div class="search-box"><input type="text" id="todoSearch" placeholder="Cari todo..." class="search-input"/></div>
-          <button class="btn btn-primary" id="btnAddTodo">+ Tambah</button>
+          <button class="btn btn-primary" id="btnAddTodo" aria-label="Tambah todo">+ Tambah</button>
         </div>
         <div class="habit-date-nav">
           <button id="todoPrevDay" aria-label="Hari sebelumnya">‹</button>
           <span id="todoCurrentDate"></span>
           <button id="todoNextDay" aria-label="Hari berikutnya">›</button>
         </div>
-        <div class="filter-row">
+        <div class="filter-row seg" id="todoStatusFilter">
           <button class="filter-btn active" data-filter="all">Semua</button>
           <button class="filter-btn" data-filter="pending">Aktif</button>
           <button class="filter-btn" data-filter="done">Selesai</button>
           <button class="filter-btn" data-filter="archived">Arsip</button>
         </div>
-        <div class="filter-row">
+        <div class="filter-row chips" id="todoPriorityFilter">
           <button class="filter-btn active" data-priority="all">Semua</button>
-          <button class="filter-btn" data-priority="high">🔴 High</button>
-          <button class="filter-btn" data-priority="medium">🟡 Medium</button>
-          <button class="filter-btn" data-priority="low">🟢 Low</button>
+          <button class="filter-btn" data-priority="high">High</button>
+          <button class="filter-btn" data-priority="medium">Medium</button>
+          <button class="filter-btn" data-priority="low">Low</button>
         </div>
         <div class="progress-bar-wrap"><div class="progress-bar-fill" id="todoProgressFill" style="width:0%"></div></div>
         <p class="progress-label" id="todoProgressLabel">0 dari 0 selesai</p>
@@ -300,6 +300,7 @@
           <span id="sholatCurrentDate"></span>
           <button id="sholatNextDay">›</button>
         </div>
+        <div class="sholat-summary" id="sholatSummary"></div>
         <div class="sholat-list" id="sholatList"></div>
         <div class="sholat-stats">
           <h4 class="sub-title">Statistik Mingguan</h4>
@@ -424,6 +425,26 @@
       </section>
 
       <!-- SETTINGS -->
+    <!-- ===== MORE / LAINNYA (v6.7) ===== -->
+    <section class="page" id="page-more">
+      <div class="more-profile"><div class="more-avatar" id="moreAvatar">A</div><div><div class="more-name" id="moreName">Azhar</div><div class="more-sub" id="moreVer">LifeHub</div></div></div>
+      <div class="more-group-title">Fitur</div>
+      <div class="more-group">
+      <a href="#" class="more-row" data-page="journal"><span class="more-ic" style="background:#7a8fd8"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></span><span class="more-t">Journal</span><svg class="more-chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
+      <a href="#" class="more-row" data-page="sleep"><span class="more-ic" style="background:#8a7fd6"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg></span><span class="more-t">Sleep Tracker</span><svg class="more-chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
+      <a href="#" class="more-row" data-page="water"><span class="more-ic" style="background:#5b9bd5"><svg viewBox="0 0 24 24"><path d="M12 2.7s7 7.2 7 12.3a7 7 0 01-14 0c0-5.1 7-12.3 7-12.3z"/></svg></span><span class="more-t">Water Tracker</span><svg class="more-chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
+      <a href="#" class="more-row" data-page="goals"><span class="more-ic" style="background:#e9a23b"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span><span class="more-t">Goals</span><svg class="more-chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
+      <a href="#" class="more-row" data-page="stats"><span class="more-ic" style="background:#5fae8a"><svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span><span class="more-t">Statistik</span><svg class="more-chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
+      <a href="#" class="more-row" data-page="activity"><span class="more-ic" style="background:#a784d6"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg></span><span class="more-t">Log Aktivitas</span><svg class="more-chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
+      <a href="#" class="more-row" data-page="game"><span class="more-ic" style="background:#e5645a"><svg viewBox="0 0 24 24"><path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/></svg></span><span class="more-t">Habit Quest</span><svg class="more-chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
+      </div>
+      <div class="more-group-title">Pengaturan</div>
+      <div class="more-group">
+      <a href="#" class="more-row" data-page="settings"><span class="more-ic" style="background:#8a9086"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></span><span class="more-t">Pengaturan</span><svg class="more-chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
+      <div class="more-row"><span class="more-ic" style="background:#1d2a1d"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg></span><span class="more-t">Mode gelap</span><label class="toggle"><input type="checkbox" id="moreDarkToggle"/><span class="toggle-slider"></span></label></div>
+      </div>
+    </section>
+
       <section class="page" id="page-settings">
         <div class="settings-list">
           <div class="settings-group">
@@ -541,6 +562,7 @@
                 <li>Tampilan baru: palet sage yang tenang, kartu pastel, dan efek kaca. Dark mode ikut dirapikan.</li>
                 <li>Bilah navigasi bawah kini berupa pil kaca ringkas dengan penanda yang meluncur.</li>
                 <li>Progres hari ini di Dashboard memakai bar horizontal, menggantikan grafik donat.</li>
+                <li>Tab baru "Lainnya" di navigasi bawah berisi Journal, Sleep, Water, Goals, Statistik, Log Aktivitas, Habit Quest, dan Pengaturan.</li>
                 <li>Animasi lebih halus dan hemat baterai. Font sistem dipakai, tidak perlu unduh font lagi.</li>
               </ul>
             </div>
@@ -566,9 +588,9 @@
   <a href="#" class="bnav-item" data-page="sholat">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
     <small>Sholat</small></a>
-  <a href="#" class="bnav-item" data-page="journal">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-    <small>Journal</small></a>
+  <a href="#" class="bnav-item" data-page="more">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    <small>Lainnya</small></a>
   <i class="bnav-ind"></i>
 </nav>
 

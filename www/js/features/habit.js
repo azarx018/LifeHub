@@ -29,6 +29,16 @@ export async function renderHabits() {
     const newHabitNote = h.createdAt && h.createdAt > monday ? ' · habit baru' : '';
     const weekLabel = `${weekDone}/${effectiveTarget} minggu ini${newHabitNote}`;
     const scheduleLabel = habitDays(h).length === 7 ? 'Setiap hari' : habitDays(h).slice().sort().map(d => DAY_NAMES_SHORT[d]).join(' · ');
+    // Strip mingguan (v6.7): isi = sudah, cincin merah = terlewat, pudar = bukan jadwal, garis = tanggal dipilih
+    const hColor = h.color || '#5f8d62';
+    const dayShort = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+    const stripHtml = weekDays.map(ds => {
+      const isDone = hLogs.some(l => l.habitId === h.id && l.date === ds);
+      const sched = (!h.createdAt || ds >= h.createdAt) && isHabitScheduledOn(h, ds);
+      const cls = isDone ? 'done' : !sched ? 'off' : ds < today() ? 'miss' : '';
+      const nm = dayShort[new Date(ds + 'T12:00:00').getDay()];
+      return `<div class="hw-day ${cls} ${ds === S.habitDate ? 'sel' : ''}" style="--c:${hColor}"><i></i><span>${nm}</span></div>`;
+    }).join('');
     const item = document.createElement('div');
     item.className = 'habit-item animate-in';
     item.innerHTML = `
@@ -43,7 +53,7 @@ export async function renderHabits() {
           : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="9"/></svg>`
         }</button>
       </div>
-      <div class="habit-progress-bar"><div class="habit-progress-fill" style="width:${Math.min(100,pct)}%;background:${h.color||'#5f8d62'}"></div></div>
+      <div class="habit-week">${stripHtml}</div>
       <div class="habit-stats-row">
         <span class="habit-stat">${weekLabel}</span>
         <span class="habit-stat">${pct}%</span>
@@ -66,6 +76,8 @@ export async function renderHabits() {
     });
     const editBtns = qsa('.icon-btn', item);
     editBtns[0].addEventListener('click', () => openHabitModal(h));
+    // v6.7: ketuk nama/info habit = edit (tombol edit disembunyikan lewat CSS)
+    qs('.habit-info', item).addEventListener('click', () => openHabitModal(h));
     editBtns[1].addEventListener('click', () => confirm2('Hapus habit ini?', async () => {
       await DB.delete('habits', h.id);
       const logs = hLogs.filter(l => l.habitId === h.id);

@@ -52,6 +52,7 @@ const ASSETS = [
   './js/features/sleep.js',
   './js/features/stats.js',
   './js/features/settings.js',
+  './js/features/more.js',
   './js/charts/donut.js',
   './js/charts/line.js',
   './js/features/game/engine.js',

@@ -38,6 +38,23 @@ lapisan CSS paling aman dan paling ringan. Tidak ada perubahan data/DB.
   halaman, tidak diulang tiap render. `backdrop-filter` cuma di 3 elemen kecil.
 - `prefers-reduced-motion` dihormati. `theme-color` browser ikut tema.
 
+### 🧩 Penataan ulang Dashboard & Todo (tahap 1)
+**File diubah**: `css/theme.css`, `features/dashboard.js`, `features/todo.js`, `index.html`
+- Dashboard: kartu **Skor harianmu** (rata-rata Todo, Habit, Sholat, Air) jadi kartu utama di atas grid. Urutan kartu ditata ulang lewat CSS `order`: Air + Tidur, Mood, Waktu Sholat, Habit + Todo, lalu sisanya. HTML dan logika tidak dipindah.
+- Todo: daftar dalam satu kartu dengan garis tipis, prioritas jadi titik warna, filter status jadi segmented control, tombol Tambah jadi FAB, ketuk isi todo untuk edit (tombol edit disembunyikan), emoji pada badge dibuang.
+- Navigasi tanggal (Todo, Habit, Sholat) jadi kartu dengan panah.
+
+### 🧩 Penataan ulang Habit & Sholat (tahap 2)
+**File diubah**: `css/theme.css`, `features/habit.js`, `features/sholat.js`, `index.html`
+- Habit: kartu lebih lega dengan **strip mingguan** (isi = sudah, cincin merah = terlewat, pudar = bukan jadwal, garis = tanggal dipilih). Ketuk nama/info habit untuk edit (tombol edit disembunyikan), tombol hapus tetap ada tapi lebih halus.
+- Sholat: ada ringkasan "Terlaksana n / 5 waktu" dengan penanda segmen, lima waktu sholat dalam satu kartu dengan garis tipis, dan Statistik Mingguan dalam kartu dengan titik yang lebih jelas.
+
+### 🧭 Navigasi & halaman Lainnya (tahap 3)
+**File baru**: `features/more.js`. **File diubah**: `core/router.js`, `legacy.js`, `sw.js`, `index.html`, `css/theme.css`
+- Item Journal di bottom nav diganti tab **Lainnya** (halaman `page-more`): profil singkat, daftar fitur (Journal, Sleep, Water, Goals, Statistik, Log Aktivitas, Habit Quest), Pengaturan, dan toggle Mode gelap.
+- Tab Lainnya tetap aktif saat berada di salah satu sub-halamannya. Sidebar/hamburger tidak diubah (masih membuka semua halaman, dan tetap menu utama di desktop).
+- Diuji otomatis: buka Lainnya, masuk ke Journal dan Pengaturan, toggle dark mode (sinkron dengan toggle di Pengaturan), sidebar tetap terbuka.
+
 ### 🐛 Bug yang ketemu & diperbaiki saat review (semua halaman, dark + light)
 - Bar chart Statistik & Sleep runtuh jadi garis tipis (bug lama sejak sebelum v6.7): tinggi persen butuh induk bertinggi pasti. Sekarang bar tampil normal. (`css/theme.css`)
 - Input warna di form Habit sempat jatuh ke hitam karena default `var(--primary)` tidak valid untuk `<input type=color>`; diganti hex `#5f8d62`.

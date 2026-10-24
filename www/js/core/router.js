@@ -21,6 +21,7 @@ import { renderHabits } from '../features/habit.js';
 import { renderSleep } from '../features/sleep.js';
 import { renderStats } from '../features/stats.js';
 import { renderSettings } from '../features/settings.js';
+import { renderMore } from '../features/more.js';
 // ↓ Sudah dipindah ke js/features/game/ (Sprint 4)
 import { renderGame, PIXEL } from '../features/game/canvas.js';
 
@@ -39,8 +40,10 @@ export function navigateTo(page) {
   // mulai dari atas.
   const pc = el('pageContainer'); if(pc) pc.scrollTop = 0;
   qsa('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
-  qsa('.bnav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
-  const titles = { dashboard:'Dashboard', todo:'Todo', habit:'Habit Tracker', journal:'Journal', sholat:'Sholat', sleep:'Sleep Tracker', water:'Water Tracker', goals:'Goals', stats:'Statistik', activity:'Log Aktivitas', game:'⚔️ Habit Quest', settings:'Pengaturan' };
+  // Tab "Lainnya" juga aktif saat berada di salah satu sub-halamannya (v6.7)
+  const inMore = ['journal','sleep','water','goals','stats','activity','game','settings'].includes(page);
+  qsa('.bnav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page || (inMore && n.dataset.page === 'more')));
+  const titles = { dashboard:'Dashboard', todo:'Todo', habit:'Habit Tracker', journal:'Journal', sholat:'Sholat', sleep:'Sleep Tracker', water:'Water Tracker', goals:'Goals', stats:'Statistik', activity:'Log Aktivitas', game:'⚔️ Habit Quest', settings:'Pengaturan', more:'Lainnya' };
   const tb = el('topbarTitle'); if(tb) tb.textContent = titles[page] || page;
   S.currentPage = page;
   closeSidebar();
@@ -67,6 +70,7 @@ export function navigateTo(page) {
     case 'activity': renderActivity(); break;
     case 'game': renderGame(); break;
     case 'settings': renderSettings(); break;
+    case 'more': renderMore(); break;
   }
 }
 export function openSidebar() {

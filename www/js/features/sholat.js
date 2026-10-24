@@ -51,6 +51,15 @@ export async function renderSholat() {
     });
     list.appendChild(item);
   });
+  // Ringkasan hari ini (v6.7)
+  const sum = el('sholatSummary');
+  if(sum) {
+    const nDone = PRAYERS.filter(p => dayLog.prayers[p.key]).length;
+    sum.innerHTML = `
+      <div class="sholat-sum-lbl">Terlaksana</div>
+      <div class="sholat-sum-val">${nDone}<small> / ${PRAYERS.length} waktu</small></div>
+      <div class="sholat-sum-dots">${PRAYERS.map(p => `<i class="${dayLog.prayers[p.key] ? 'on' : ''}"></i>`).join('')}</div>`;
+  }
   renderSholatWeek(sholatLogs);
 }
 function renderSholatWeek(sholatLogs) {

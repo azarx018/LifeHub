@@ -77,8 +77,8 @@ export async function renderTodos() {
       <div class="todo-body">
         <div class="todo-text">${escHtml(t.title)}</div>
         <div class="todo-meta">
-          <span class="todo-badge badge-${t.priority||'low'}">${{high:'🔴 High',medium:'🟡 Medium',low:'🟢 Low'}[t.priority]||'Low'}</span>
-          ${t.category?`<span class="todo-badge badge-cat">🏷️ ${escHtml(t.category)}</span>`:''}
+          <span class="todo-badge badge-${t.priority||'low'}">${{high:'High',medium:'Medium',low:'Low'}[t.priority]||'Low'}</span>
+          ${t.category?`<span class="todo-badge badge-cat">${escHtml(t.category)}</span>`:''}
           ${deadlineTxt?`<span class="todo-badge badge-date">${deadlineTxt}</span>`:''}
         </div>
       </div>
@@ -104,6 +104,8 @@ export async function renderTodos() {
     });
     const btns = qsa('.icon-btn', item);
     btns[0].addEventListener('click', () => openTodoModal(t));
+    // v6.7: ketuk judul/isi todo = edit (tombol edit disembunyikan lewat CSS)
+    qs('.todo-body', item).addEventListener('click', () => openTodoModal(t));
     btns[1].addEventListener('click', async () => {
       t.archived = !t.archived; await DB.put('todos', t); renderTodos();
       showToast(t.archived ? 'Diarsipkan' : 'Dipulihkan');
