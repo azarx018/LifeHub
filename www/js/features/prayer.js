@@ -1,87 +1,12 @@
 /* ===== PRAYER TIME CALCULATOR ===== */
 // Tidak ada perubahan logika dari app.js v5.7 — cuma dipindah + di-export.
-// Rumus: Calculation Method = MWL (Muslim World League)
 import { DB } from '../core/db.js';
 import { S } from '../core/state.js';
 import { KV, today, el, showToast } from '../core/utils.js';
 import { renderSettings } from './settings.js';
 import { getCurrentCoords } from '../core/geo.js';
-import { showPushNotif, hasNotificationPermission } from '../core/notifications.js';
-
-// Rumus: Calculation Method = MWL (Muslim World League)
-// Fajr angle: 18°, Isha angle: 17°
-const PT = {
-  toRad: d => d * Math.PI / 180,
-  toDeg: r => r * 180 / Math.PI,
-  fixAngle: a => { a = a % 360; return a < 0 ? a + 360 : a; },
-  fixHour: h => { h = h % 24; return h < 0 ? h + 24 : h; },
-
-  sunPosition(jd) {
-    const D = jd - 2451545.0;
-    const g = this.fixAngle(357.529 + 0.98560028 * D);
-    const q = this.fixAngle(280.459 + 0.98564736 * D);
-    const L = this.fixAngle(q + 1.915 * Math.sin(this.toRad(g)) + 0.020 * Math.sin(this.toRad(2*g)));
-    const e = 23.439 - 0.00000036 * D;
-    const RA = this.toDeg(Math.atan2(Math.cos(this.toRad(e)) * Math.sin(this.toRad(L)), Math.cos(this.toRad(L)))) / 15;
-    const eqt = q/15 - this.fixHour(RA);
-    const decl = this.toDeg(Math.asin(Math.sin(this.toRad(e)) * Math.sin(this.toRad(L))));
-    return { decl, eqt };
-  },
-
-  julianDate(y, m, d) {
-    if(m <= 2) { y--; m += 12; }
-    const A = Math.floor(y/100);
-    const B = 2 - A + Math.floor(A/4);
-    return Math.floor(365.25*(y+4716)) + Math.floor(30.6001*(m+1)) + d + B - 1524.5;
-  },
-
-  midDay(t, jd) {
-    const { eqt } = this.sunPosition(jd + t);
-    return this.fixHour(12 - eqt);
-  },
-
-  sunAngleTime(angle, t, jd, lat, direction) {
-    const { decl } = this.sunPosition(jd + t);
-    const cosVal = (-Math.sin(this.toRad(angle)) - Math.sin(this.toRad(decl)) * Math.sin(this.toRad(lat))) /
-                   (Math.cos(this.toRad(decl)) * Math.cos(this.toRad(lat)));
-    if(Math.abs(cosVal) > 1) return NaN;
-    const T = this.toDeg(Math.acos(cosVal)) / 15;
-    return this.midDay(t, jd) + (direction === 'ccw' ? -T : T);
-  },
-
-  asrTime(factor, t, jd, lat) {
-    const { decl } = this.sunPosition(jd + t);
-    const angle = -this.toDeg(Math.atan(1 / (factor + Math.tan(this.toRad(Math.abs(lat - decl))))));
-    return this.sunAngleTime(angle, t, jd, lat, 'cw');
-  },
-
-  calculate(lat, lng, date) {
-    const jd = this.julianDate(date.getFullYear(), date.getMonth()+1, date.getDate());
-    const tz = date.getTimezoneOffset() / -60;
-    const times = {
-      subuh:   this.sunAngleTime(18, 5/24, jd, lat, 'ccw'),
-      terbit:  this.sunAngleTime(0.833, 6/24, jd, lat, 'ccw'),
-      dzuhur:  this.midDay(12/24, jd),
-      ashar:   this.asrTime(1, 13/24, jd, lat),
-      maghrib: this.sunAngleTime(0.833, 18/24, jd, lat, 'cw'),
-      isya:    this.sunAngleTime(17, 18/24, jd, lat, 'cw'),
-    };
-    // Convert to local time
-    const result = {};
-    Object.entries(times).forEach(([k, v]) => {
-      const localH = this.fixHour(v + tz - lng/15);
-      const h = Math.floor(localH);
-      const m = Math.floor((localH - h) * 60);
-      result[k] = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-    });
-    return result;
-  },
-
-  toMinutes(timeStr) {
-    const [h,m] = timeStr.split(':').map(Number);
-    return h * 60 + m;
-  }
-};
+import { hasNotificationPermission, schedulePrayerNotifications, cancelPrayerNotifications } from '../core/notifications.js';
+import { PT, PRAYER_KEYS, PRAYER_NAMES, buildPrayerSchedule } from '../core/prayerCalc.js';
 
 // State prayer times
 let _prayerTimes  = null;
@@ -96,6 +21,8 @@ export async function initPrayerTimes() {
     _prayerTimes = PT.calculate(saved.lat, saved.lng, new Date());
     renderPrayerCountdown();
     startPrayerCountdownTick();
+    syncPrayerNotifications().catch(e => console.error('syncPrayerNotifications', e));
+    bindPrayerResume();
   }
 }
 
@@ -108,6 +35,8 @@ export async function getLocation() {
     _prayerTimes = PT.calculate(lat, lng, new Date());
     renderPrayerCountdown();
     startPrayerCountdownTick();
+    syncPrayerNotifications(true).catch(e => console.error('syncPrayerNotifications', e));
+    bindPrayerResume();
     renderSettings();
     showToast('Lokasi berhasil didapat 📍');
   } catch (e) {
@@ -215,25 +144,45 @@ function startPrayerCountdownTick() {
       timerEl.textContent = countdownStr;
       timerEl.className = 'prayer-countdown-timer' + (next.minutesLeft <= 15 ? ' urgent' : '');
     }
-    // Cek reminder
-    checkPrayerReminder(next);
   }, 30000); // update tiap 30 detik
 }
 
-let _lastPrayerNotified = '';
-async function checkPrayerReminder(next) {
-  const enabled = await KV.get('prayer_reminder_enabled', false);
-  if(!enabled) return;
-  if(!(await hasNotificationPermission())) return;
-  const minutesBefore = parseInt(await KV.get('prayer_reminder_minutes', 5));
-  const notifKey = `${today()}_${next.key}`;
-  if(next.minutesLeft <= minutesBefore && next.minutesLeft > 0 && _lastPrayerNotified !== notifKey) {
-    _lastPrayerNotified = notifKey;
-    const msg = minutesBefore === 0
-      ? `Waktunya sholat ${next.name} (${next.time})`
-      : `Sholat ${next.name} dalam ${next.minutesLeft} menit (${next.time})`;
-    await showPushNotif('🕌 Reminder Sholat', msg);
-    showToast(`🕌 ${msg}`);
-  }
+// ===== Reminder sholat (v6.7) =====
+// Dulu: dicek lewat setInterval JS yang cuma jalan kalau app terbuka DAN sedang di
+// halaman Dashboard, jadi tidak pernah berbunyi di background/app ditutup (dan
+// "tepat waktu"/0 menit tidak pernah terpicu). Sekarang: jadwal 7 hari ke depan
+// didaftarkan sebagai alarm native sekaligus, lalu disegarkan tiap hari/saat app
+// dibuka lagi atau saat lokasi/pengaturan berubah.
+let _prayerScheduleKey = '';
+let _prayerResumeBound = false;
+
+export function getPrayerTimesFor(date) {
+  return _prayerCoords ? PT.calculate(_prayerCoords.lat, _prayerCoords.lng, date) : null;
 }
 
+export async function syncPrayerNotifications(force = false) {
+  const enabled = await KV.get('prayer_reminder_enabled', false);
+  if (!enabled || !_prayerCoords || !(await hasNotificationPermission())) {
+    _prayerScheduleKey = '';
+    await cancelPrayerNotifications();
+    return;
+  }
+  const minutesBefore = parseInt(await KV.get('prayer_reminder_minutes', 5), 10) || 0;
+  const key = `${today()}|${_prayerCoords.lat.toFixed(3)},${_prayerCoords.lng.toFixed(3)}|${minutesBefore}`;
+  if (!force && key === _prayerScheduleKey) return;
+  const days = [];
+  for (let d = 0; d < 7; d++) {
+    const date = new Date(); date.setDate(date.getDate() + d);
+    days.push({ date, times: PT.calculate(_prayerCoords.lat, _prayerCoords.lng, date) });
+  }
+  await schedulePrayerNotifications(buildPrayerSchedule(days, minutesBefore, Date.now()));
+  _prayerScheduleKey = key;
+}
+
+function bindPrayerResume() {
+  if (_prayerResumeBound) return;
+  _prayerResumeBound = true;
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) syncPrayerNotifications().catch(() => {});
+  });
+}

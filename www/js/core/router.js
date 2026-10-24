@@ -43,7 +43,7 @@ export function navigateTo(page) {
   // Tab "Lainnya" juga aktif saat berada di salah satu sub-halamannya (v6.7)
   const inMore = ['journal','sleep','water','goals','stats','activity','game','settings'].includes(page);
   qsa('.bnav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page || (inMore && n.dataset.page === 'more')));
-  const titles = { dashboard:'Dashboard', todo:'Todo', habit:'Habit Tracker', journal:'Journal', sholat:'Sholat', sleep:'Sleep Tracker', water:'Water Tracker', goals:'Goals', stats:'Statistik', activity:'Log Aktivitas', game:'⚔️ Habit Quest', settings:'Pengaturan', more:'Lainnya' };
+  const titles = { dashboard:'Beranda', todo:'Todo', habit:'Habit', journal:'Jurnal', sholat:'Sholat', sleep:'Tidur', water:'Air Minum', goals:'Tujuan', stats:'Statistik', activity:'Log Aktivitas', game:'⚔️ Habit Quest', settings:'Pengaturan', more:'Lainnya' };
   const tb = el('topbarTitle'); if(tb) tb.textContent = titles[page] || page;
   S.currentPage = page;
   closeSidebar();

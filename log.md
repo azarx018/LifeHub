@@ -55,6 +55,34 @@ lapisan CSS paling aman dan paling ringan. Tidak ada perubahan data/DB.
 - Tab Lainnya tetap aktif saat berada di salah satu sub-halamannya. Sidebar/hamburger tidak diubah (masih membuka semua halaman, dan tetap menu utama di desktop).
 - Diuji otomatis: buka Lainnya, masuk ke Journal dan Pengaturan, toggle dark mode (sinkron dengan toggle di Pengaturan), sidebar tetap terbuka.
 
+### 🏠 Dashboard ala fintech + Todo multi-hari + perapian (tahap 4)
+**File diubah**: `index.html`, `css/theme.css`, `features/dashboard.js`, `features/todo.js`, `legacy.js`
+- Dashboard: hero jadi header berisi avatar + sapaan, **Skor hari ini** (angka besar) dengan **bar segmen** Todo/Habit/Sholat/Air, **kartu aksi cepat** yang menimpa header (Todo, Air, Jurnal, Tidur), dan **kartu ringkasan geser horizontal** (ketuk = buka halaman). Todo dan Habit hari ini tampil selebar layar, Mood dan Tidur berdampingan. Kartu Air di grid disembunyikan karena sudah ada di aksi cepat dan ringkasan.
+- Ikon tab Dashboard jadi rumah (sebelumnya sama dengan ikon Lainnya).
+- Hamburger disembunyikan di mobile (semua halaman terjangkau lewat tab bawah + Lainnya). Sidebar desktop tetap.
+- **Todo "Aktif selama"**: Hari ini saja / 2 / 3 / 5 / 7 / 14 hari / Sampai selesai (dicoret) / Atur sendiri (2-365). Todo muncul tiap hari selama masa aktif, ada badge "Hari 2/3" atau "Hari ke-N · sampai selesai". Dihitung selesai di hari dicoret (`doneAt`); bila dicoret saat melihat tanggal lampau, dihitung di tanggal itu. Todo lama tanpa field `span` berperilaku seperti sebelumnya (hanya di tanggal mulainya). Todo multi-hari yang belum selesai dan lewat masa aktifnya hilang dari daftar.
+
+### 🕌 Notifikasi & jadwal sholat (tahap 5)
+**File baru**: `core/prayerCalc.js`, `PANDUAN_SETUP_ANDROID.md`, `tests/`. **File diubah**: `features/prayer.js`, `core/notifications.js`, `features/sholat.js`, `legacy.js`, `.github/workflows/build-android.yml`
+- **Akar masalah reminder**: dulu dicek lewat `setInterval` JS yang cuma jalan saat app terbuka DAN di halaman Dashboard, jadi tidak pernah berbunyi di background/app ditutup. Opsi "tepat waktu" (0 menit) juga tidak pernah terpicu. Sekarang jadwal 7 hari ke depan didaftarkan sebagai alarm native sekaligus (channel prioritas tinggi, ID tetap 3000-3069), dan disegarkan tiap hari/saat app dibuka lagi/saat lokasi atau pengaturan berubah. Di web/PWA tetap timer biasa (selama app terbuka).
+- **Akurasi jadwal**: sebelumnya memakai sudut MWL 18°/17° (Subuh telat ~6 menit, Isya cepat ~6 menit dibanding jadwal Indonesia) dan dibulatkan ke bawah. Sekarang Kemenag RI (Subuh -20°, Isya -18°) dengan pembulatan ke atas + ihtiyath 2 menit. Dicek terhadap data resmi Bimas Islam (Tasikmalaya 6 Apr 2026, Majalengka 3 Jun 2026): selisih <= 2 menit, rata-rata -0,5 menit. Ini hitungan dari koordinat GPS, bukan data resmi per kabupaten/kota, jadi tetap perkiraan.
+- Halaman Sholat memakai jadwal yang sama dengan countdown Dashboard (sebelumnya jam tetap 04:30/12:00/...), label zona WIB/WITA/WIT mengikuti perangkat; tanpa lokasi muncul petunjuk + tombol "Atur lokasi".
+- CI menambah izin alarm presisi (`SCHEDULE_EXACT_ALARM`, `USE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`), idempoten. Saat reminder diaktifkan di Android 12+, app membuka pengaturan "Alarm & pengingat" bila belum diizinkan. **Belum diuji di perangkat Android sungguhan.**
+
+### ✅ Todo: terlewat, berulang, subtugas
+**File baru**: `core/todoRules.js` (aturan murni, bisa dites). **File diubah**: `features/todo.js`, `features/dashboard.js`, `index.html`
+- **Terlewat**: todo belum selesai yang masa aktifnya habis muncul di banner "N todo terlewat" -> daftar khusus, ada tombol **Pindah ke hari ini**. Todo "sampai selesai" dan berulang tidak pernah dianggap terlewat.
+- **Ulangi**: setiap hari / hari kerja / setiap minggu. Tiap kemunculan adalah todo biasa (statistik "selesai di hari dicoret" tetap benar), dibuat otomatis saat app/halaman dibuka; hari yang terlewat tidak dibuatkan satu-satu. Menghapus todo berulang menghentikan pengulangannya (arsip = lewati satu hari saja).
+- **Subtugas**: satu baris satu subtugas di form, tampil sebagai daftar centang di todo + badge progres.
+
+### 🎨 Lain-lain
+- **Tema**: pilihan Ikuti sistem / Terang / Gelap (Pengaturan dan Lainnya, sinkron, ikut berubah live saat sistem berganti). Pengguna yang sebelumnya memilih gelap tetap gelap; yang lain sekarang ikut sistem.
+- **Bahasa seragam**: Beranda, Habit, Jurnal, Tidur, Air Minum, Tujuan; prioritas Tinggi/Sedang/Rendah; Ulasan Mingguan; Ekspor/Impor. Judul halaman yang dobel dengan topbar diganti (Kebiasaan, Sholat harian, Pola tidur, Tujuan hidup, Rekap aktivitas).
+- **Keterbacaan & area ketuk**: teks terkecil dinaikkan, tombol arsip/hapus/centang punya area ketuk >= 40px.
+- **Mode hemat otomatis** (RAM <= 3 GB atau <= 4 core): blur kaca dimatikan. **Fallback** untuk WebView tanpa `color-mix()`.
+- **Rilis**: `log.md` dikeluarkan dari `.gitignore` (sudah ter-track), langkah release notes di CI punya teks cadangan bila entri versi belum ada, panduan build ditambahkan, `npm test` (18 tes).
+- Dicek dan tidak perlu diubah: animasi pixel Dashboard sudah berhenti saat pindah halaman (`PIXEL.stop()`).
+
 ### 🐛 Bug yang ketemu & diperbaiki saat review (semua halaman, dark + light)
 - Bar chart Statistik & Sleep runtuh jadi garis tipis (bug lama sejak sebelum v6.7): tinggi persen butuh induk bertinggi pasti. Sekarang bar tampil normal. (`css/theme.css`)
 - Input warna di form Habit sempat jatuh ke hitam karena default `var(--primary)` tidak valid untuk `<input type=color>`; diganti hex `#5f8d62`.

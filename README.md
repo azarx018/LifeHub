@@ -62,6 +62,7 @@ lifehub/
 ├── capacitor.config.json       (config app: appId, webDir, dst)
 ├── .github/workflows/          (build APK otomatis via GitHub Actions)
 ├── PANDUAN_SETUP_ANDROID.md    (cara build APK tanpa PC)
+├── tests/                      (npm test — aturan Todo, hitungan sholat, penjadwalan notifikasi)
 └── www/                        (webDir — semua source PWA, tetap jalan sbg web/PWA biasa)
     ├── index.html
     ├── manifest.json

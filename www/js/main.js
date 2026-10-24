@@ -18,6 +18,13 @@ import { setupEvents } from './legacy.js';
 import { cleanupTempApk } from './core/updateChecker.js';
 import { initUpdateUI, runStartupUpdateCheck } from './core/updatePopup.js';
 
+
+// Mode hemat (v6.7): HP kelas bawah (RAM <= 3 GB atau <= 4 core) -> matikan blur kaca
+// (bagian termurah untuk dilepas, paling berat di GPU lemah). Tampilan tetap rapi.
+{
+  const mem = navigator.deviceMemory, cores = navigator.hardwareConcurrency;
+  if ((mem && mem <= 3) || (cores && cores <= 4)) document.documentElement.classList.add('lite');
+}
 // ===== PWA SERVICE WORKER =====
 // Service worker cuma relevan untuk mode web/PWA (offline caching lewat
 // browser). Saat app jalan sebagai APK Capacitor, file sudah lokal di HP dan

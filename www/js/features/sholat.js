@@ -4,6 +4,8 @@ import { DB } from '../core/db.js';
 import { S } from '../core/state.js';
 import { uid, today, el, qs, qsa, fmt, showToast, getMondayOfWeek, getWeekDays } from '../core/utils.js';
 import { checkAchievements } from './game/achievements.js';
+import { getPrayerTimesFor, getLocation } from './prayer.js';
+import { tzLabel } from '../core/prayerCalc.js';
 
 const SVG_MOON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`;
 const SVG_SUN  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
@@ -28,6 +30,10 @@ export async function renderSholat() {
   const dayLog = sholatLogs.find(s => s.date === S.sholatDate) || { date: S.sholatDate, prayers: {} };
   const list = el('sholatList'); if(!list) return;
   list.innerHTML = '';
+  // Jam dihitung dari lokasi (sama dengan countdown Dashboard); tanpa lokasi = perkiraan tetap.
+  const _day = new Date(S.sholatDate + 'T12:00:00');
+  const _times = getPrayerTimesFor(_day);
+  const _tz = tzLabel(_day);
   PRAYERS.forEach(p => {
     const done = dayLog.prayers[p.key];
     const item = document.createElement('div');
@@ -36,7 +42,7 @@ export async function renderSholat() {
       <div class="sholat-icon">${p.icon}</div>
       <div class="sholat-info">
         <div class="sholat-name">${p.name}</div>
-        <div class="sholat-time">${p.time} WIB</div>
+        <div class="sholat-time">${_times ? _times[p.key] : p.time} ${_tz}</div>
       </div>
       <button class="sholat-toggle ${done?'done':''}">${done ? SVG_CHECK : SVG_BOX}</button>
     `;
@@ -51,6 +57,14 @@ export async function renderSholat() {
     });
     list.appendChild(item);
   });
+  const hint = el('sholatHint');
+  if(hint) {
+    if(_times) hint.textContent = 'Jadwal dihitung dari lokasimu (metode Kemenag RI).';
+    else {
+      hint.innerHTML = 'Jam di atas masih perkiraan. <button class="btn-link" id="btnSholatLoc">Atur lokasi</button> supaya jadwal sesuai kotamu.';
+      el('btnSholatLoc').onclick = async () => { await getLocation(); renderSholat(); };
+    }
+  }
   // Ringkasan hari ini (v6.7)
   const sum = el('sholatSummary');
   if(sum) {

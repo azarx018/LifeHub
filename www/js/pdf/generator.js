@@ -84,7 +84,7 @@ export async function generatePDF() {
         high: rTodos.filter(t=>t.priority==='high').length,
         medium: rTodos.filter(t=>t.priority==='medium').length,
         low: rTodos.filter(t=>t.priority==='low').length,
-        rows: rTodos.map(t=>[t.title, {high:'High',medium:'Medium',low:'Low'}[t.priority]||'-', fmtShort((t.doneAt||today())+'T12:00:00'), t.category||'-'])
+        rows: rTodos.map(t=>[t.title, {high:'Tinggi',medium:'Sedang',low:'Rendah'}[t.priority]||'-', fmtShort((t.doneAt||today())+'T12:00:00'), t.category||'-'])
       },
       sholat: {
         totalDone: totalSholatDone, totalPossible: totalSholatPossible, pct: sholatPct,
@@ -184,7 +184,7 @@ export async function generatePDF() {
       <div class="stat-box"><div class="stat-val">${rTodos.filter(t=>t.priority==='low').length}</div><div class="stat-lbl">Low Priority</div></div>
     </div>
     ${rTodos.length>0?`<table><tr><th>Tugas</th><th>Prioritas</th><th>Selesai</th><th>Kategori</th></tr>
-      ${rTodos.map(t=>`<tr><td>${escHtml(t.title)}</td><td>${{high:'🔴 High',medium:'🟡 Medium',low:'🟢 Low'}[t.priority]||'-'}</td><td>${fmtShort((t.doneAt||today())+'T12:00:00')}</td><td>${escHtml(t.category||'-')}</td></tr>`).join('')}
+      ${rTodos.map(t=>`<tr><td>${escHtml(t.title)}</td><td>${{high:'🔴 Tinggi',medium:'🟡 Sedang',low:'🟢 Rendah'}[t.priority]||'-'}</td><td>${fmtShort((t.doneAt||today())+'T12:00:00')}</td><td>${escHtml(t.category||'-')}</td></tr>`).join('')}
     </table>`:'<p style="color:#aaa;font-size:12px">Belum ada todo selesai di periode ini.</p>'}
   </div>
 
@@ -451,7 +451,7 @@ async function renderReportNative(stats, filename) {
     table(['Waktu Sholat', 'Dilakukan', 'Persentase'], stats.sholat.rows);
 
     // ===== Habit =====
-    sectionTitle('🔥', 'Habit Tracker');
+    sectionTitle('🔥', 'Habit');
     if (stats.habits.length) {
       table(['Habit', 'Dilakukan', 'Dari (Hari)', 'Persentase'], stats.habits.map(h => [
         h.name + (h.isNew ? ' (baru)' : ''), `${h.done} kali`, `${h.possible} hari`, `${h.pct}%`
@@ -493,7 +493,7 @@ async function renderReportNative(stats, filename) {
 
     // ===== Goals =====
     if (stats.goals.length) {
-      sectionTitle('📚', 'Goals');
+      sectionTitle('📚', 'Tujuan');
       table(['Goal', 'Progress', 'Milestone', 'Deadline'], stats.goals.map(g => [
         g.title, `${g.pct}%`, `${g.milestoneDone || 0}/${g.milestoneCount || 0}`, g.deadline || '-'
       ]));

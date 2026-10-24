@@ -7,7 +7,7 @@ import { isHabitScheduledOn, toggleHabitLog, renderHabits } from './habit.js';
 import { renderDashboardSleepBtn } from './sleep.js';
 import { renderDashboardCountdowns } from './settings.js';
 import { renderSholat } from './sholat.js';
-import { renderTodos, todoDateOf } from './todo.js';
+import { renderTodos, todoDateOf, todoVisibleOn, todoDoneOn, ensureRecurringTodos } from './todo.js';
 import { renderJournal } from './journal.js';
 // renderSholat: dashboard punya widget sholat SENDIRI (renderDashboardSholat,
 // bukan reuse features/sholat.js — jadi tidak diimport dari sana.
@@ -119,6 +119,7 @@ function updateGreeting(nowDate) {
   else if (h >= 18) greet = 'Selamat Malam';
   const gt = el('greetText'); if(gt) gt.textContent = greet;
   const gn = el('greetName'); if(gn) gn.textContent = S.settings.name;
+  const av = el('heroAvatar'); if(av) av.textContent = (S.settings.name || 'A').trim().charAt(0).toUpperCase();
   const gd = el('greetDate'); if(gd) {
     const opts = {weekday:'long',year:'numeric',month:'long',day:'numeric'};
     gd.textContent = (nowDate || new Date()).toLocaleDateString('id-ID', opts);
@@ -348,6 +349,7 @@ async function renderDashboardSholat(sholatLogs) {
 }
 
 export async function renderDashboard() {
+  await ensureRecurringTodos();
   updateGreeting();
   updateSkyBackground();
 
@@ -411,12 +413,12 @@ export async function renderDashboard() {
   // Todos (per hari, sejak v6.6.0) — cuma todo milik HARI INI.
   // Prioritas High→Medium→Low, belum selesai duluan
   const pOrder = {high:0, medium:1, low:2};
-  const todayTodos = todos.filter(t => !t.archived && todoDateOf(t) === today());
+  const todayTodos = todos.filter(t => !t.archived && todoVisibleOn(t, today()));
   const pendingTodos = todayTodos
-    .filter(t => !t.done)
+    .filter(t => !todoDoneOn(t, today()))
     .sort((a,b) => (pOrder[a.priority]??1) - (pOrder[b.priority]??1));
   const doneTodayTodos = todayTodos
-    .filter(t => t.done)
+    .filter(t => todoDoneOn(t, today()))
     .sort((a,b) => (pOrder[a.priority]??1) - (pOrder[b.priority]??1));
   // Tampilkan: pending dulu (sort priority), lalu yang sudah selesai, max 5
   const showTodos = [...pendingTodos, ...doneTodayTodos].slice(0,5);
@@ -475,39 +477,50 @@ export async function renderDashboard() {
     const sholatDone = Object.values(todaySholatForDonut.prayers || {}).filter(Boolean).length;
     const todoActive = todayTodos; // donut = progres HARI INI (todo per hari)
     const segments = [
-      { label: 'Todo',   value: todoActive.filter(t => t.done).length, total: todoActive.length,  color: '#ff9f8f' },
+      { label: 'Todo',   value: todoActive.filter(t => todoDoneOn(t, today())).length, total: todoActive.length,  color: '#ff9f8f' },
       { label: 'Habit',  value: doneHabits,  total: habits.length,                               color: '#a8dc82' },
       { label: 'Sholat', value: sholatDone,  total: 5,                                           color: '#7fd3e4' },
       { label: 'Air',    value: wc,           total: wt,                                          color: '#7ab8ec' },
     ];
-    // Progres hari ini — bar horizontal (v6.7.0, pengganti donat).
-    // Bar mulai dari nilai terakhir (window.__lhProg) supaya render ulang
-    // dashboard cuma menganimasikan yang berubah, bukan mengulang dari nol.
+    // Skor hari ini: angka besar + bar segmen (v6.7). Tiap segmen = satu kategori,
+    // terisi sesuai progresnya. Bar mulai dari nilai terakhir (window.__lhProg)
+    // supaya render ulang dashboard cuma menganimasikan yang berubah.
     const prevProg = (window.__lhProg = window.__lhProg || {});
     const rows = segments.map(s => ({
       ...s,
       p: s.total ? Math.min(100, Math.round(s.value / s.total * 100)) : 0,
       start: prevProg[s.label] ?? 0
     }));
-    // Skor harian = rata-rata progres semua kategori (v6.7)
     const score = rows.length ? Math.round(rows.reduce((a, r) => a + r.p, 0) / rows.length) : 0;
     const chip = score >= 70 ? 'Mantap' : score >= 40 ? 'Terus lanjut' : 'Mulai pelan-pelan';
     donutCard.classList.add('score-card');
     donutCard.innerHTML = `
-      <div class="score-head">
-        <div><div class="score-lbl">Skor harianmu</div><div class="score-big">${score}<small>%</small></div></div>
+      <div class="score-row">
+        <div><div class="score-lbl">Skor hari ini</div><div class="score-big">${score}<small>%</small></div></div>
         <span class="score-chip">${chip}</span>
       </div>
-      <div class="prog-list">${rows.map(s => `
-        <div class="prog-item">
-          <div class="prog-top"><span><i style="background:${s.color}"></i>${s.label}</span><b>${s.value}/${s.total}</b></div>
-          <div class="prog-track"><div class="prog-fill" style="--p:${s.start / 100};background:${s.color}"></div></div>
-        </div>`).join('')}</div>
+      <div class="seg-bar">${rows.map(s => `<div class="seg-cell"><div class="seg-fill" style="--p:${s.start / 100};background:${s.color}"></div></div>`).join('')}</div>
+      <div class="seg-legend">${rows.map(s => `<span><i style="background:${s.color}"></i>${s.label} <b>${s.value}/${s.total}</b></span>`).join('')}</div>
     `;
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      const fills = donutCard.querySelectorAll('.prog-fill');
+      const fills = donutCard.querySelectorAll('.seg-fill');
       rows.forEach((s, i) => { if (fills[i]) fills[i].style.setProperty('--p', s.p / 100); prevProg[s.label] = s.p; });
     }));
+
+    // Ringkasan hari ini: kartu geser horizontal (v6.7). Ketuk = buka halamannya.
+    const sc = el('dashScroller');
+    if (sc) {
+      const svg = p => `<svg viewBox="0 0 24 24">${p}</svg>`;
+      const cards = [
+        { k:'todo',   page:'todo',   label:'Todo',   val:`${rows[0].value}/${rows[0].total}`, sub:'selesai hari ini',  ico:svg('<path d="M5 12.5 10 17.5 19 7"/>') },
+        { k:'habit',  page:'habit',  label:'Habit',  val:`${rows[1].value}/${rows[1].total}`, sub:'selesai hari ini',  ico:svg('<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>') },
+        { k:'sholat', page:'sholat', label:'Sholat', val:`${rows[2].value}/${rows[2].total}`, sub:'waktu terlaksana',  ico:svg('<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z"/>') },
+        { k:'air',    page:'water',  label:'Air',    val:`${rows[3].value}/${rows[3].total}`, sub:'gelas',             ico:svg('<path d="M12 3s6 6.2 6 10.5a6 6 0 0 1-12 0C6 9.2 12 3 12 3z"/>') },
+        { k:'tidur',  page:'sleep',  label:'Tidur',  val: lastSleep ? lastSleep.duration.toFixed(1) : '—', sub:'jam semalam', ico:svg('<path d="M3 18V7M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/>') },
+      ];
+      sc.innerHTML = cards.map(c => `<button class="sc-card sc-${c.k}" data-go="${c.page}" aria-label="${c.label}: ${c.val} ${c.sub}"><span class="sc-ic">${c.ico}</span><span class="sc-lbl">${c.label}</span><span class="sc-val">${c.val}</span><span class="sc-sub">${c.sub}</span></button>`).join('');
+      sc.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => qs(`.nav-item[data-page="${b.dataset.go}"]`)?.click(); });
+    }
   }
 
   // Prayer countdown card

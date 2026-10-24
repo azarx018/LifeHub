@@ -10,7 +10,7 @@ import { APP_VERSION } from './core/version.js';
 import { KV, uid, today, now, el, qs, qsa, fmt, fmtShort, showToast, escHtml, getMondayOfWeek, getWeekDays, prevDay, nextDay } from './core/utils.js';
 import { openModal, closeModal, closeAllModals, confirm2, getConfirmCb } from './core/modal.js';
 import { navigateTo, openSidebar, closeSidebar } from './core/router.js';
-import { requestNotificationPermission, showPushNotif, scheduleNotifications, clearNotificationTimers } from './core/notifications.js';
+import { requestNotificationPermission, ensureExactAlarmAllowed, showPushNotif, scheduleNotifications, clearNotificationTimers } from './core/notifications.js';
 // ↓ Sprint 2: fitur yang sudah dipindah ke js/features/, dipakai lagi di
 // sini cuma buat wiring tombol di setupEvents().
 import { openTodoModal, saveTodo, renderTodos } from './features/todo.js';
@@ -24,13 +24,13 @@ import { renderDashboard } from './features/dashboard.js';
 import { renderHabits, openHabitModal, saveHabit, calcStreak, isHabitScheduledOn, toggleHabitLog, countScheduledDaysInRange } from './features/habit.js';
 import { renderSleep, openSleepModal, saveSleep, endSleepSession } from './features/sleep.js';
 import { renderStats } from './features/stats.js';
-import { renderSettings, saveSettings, exportData, importData, addCountdownTarget } from './features/settings.js';
+import { renderSettings, saveSettings, setThemeMode, exportData, importData, addCountdownTarget } from './features/settings.js';
 // ↓ Sprint 4: Habit Quest RPG (engine, achievements, canvas/UI) sudah
 // dipindah ke js/features/game/.
 import { renderGame, PIXEL } from './features/game/canvas.js';
 import { checkAchievements } from './features/game/achievements.js';
 // ↓ Sprint 5: Prayer Calculator, PDF Generator, Weekly Review sudah dipindah.
-import { getLocation, initPrayerTimes, renderPrayerCountdown } from './features/prayer.js';
+import { getLocation, initPrayerTimes, renderPrayerCountdown, syncPrayerNotifications } from './features/prayer.js';
 import { generatePDF } from './pdf/generator.js';
 import { showWeeklyReview, showWeeklyHistory, checkWeeklyReviewTrigger } from './features/weeklyReview.js';
 
@@ -75,7 +75,7 @@ export function setupEvents() {
   qsa('.nav-item').forEach(n => n.addEventListener('click', e => { e.preventDefault(); navigateTo(n.dataset.page); }));
   qsa('.bnav-item').forEach(n => n.addEventListener('click', e => { e.preventDefault(); navigateTo(n.dataset.page); }));
   qsa('.more-row[data-page]').forEach(n => n.addEventListener('click', e => { e.preventDefault(); navigateTo(n.dataset.page); }));
-  el('moreDarkToggle').addEventListener('change', e => { S.settings.darkMode = e.target.checked; saveSettings(); });
+  el('moreTheme').addEventListener('change', e => { setThemeMode(e.target.value); el('themeMode').value = e.target.value; });
   // Modal close
   el('modalBackdrop').addEventListener('click', closeAllModals);
   qsa('.modal-close').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.modal)));
@@ -92,6 +92,11 @@ export function setupEvents() {
   el('dashAddWater').addEventListener('click', async () => { await addWater(); renderDashboard(); });
   // TODO
   el('btnAddTodo').addEventListener('click', () => openTodoModal());
+  // Aksi cepat Dashboard (v6.7)
+  el('qaTodo').addEventListener('click', () => { S.todoDate = today(); openTodoModal(); });
+  el('qaWater').addEventListener('click', async () => { await addWater(); renderDashboard(); });
+  el('qaJournal').addEventListener('click', () => openJournalModal());
+  el('qaSleep').addEventListener('click', () => navigateTo('sleep'));
   el('btnSaveTodo').addEventListener('click', saveTodo);
   el('todoSearch').addEventListener('input', e => { S.todoSearch = e.target.value; renderTodos(); });
   qsa('.filter-btn[data-filter]').forEach(b => b.addEventListener('click', () => {
@@ -208,7 +213,7 @@ export function setupEvents() {
     btn.classList.add('selected'); el('goalIcon').value = btn.dataset.icon;
   });
   // SETTINGS
-  el('darkModeToggle').addEventListener('change', e => { S.settings.darkMode = e.target.checked; saveSettings(); });
+  el('themeMode').addEventListener('change', e => { setThemeMode(e.target.value); const m = el('moreTheme'); if(m) m.value = e.target.value; });
   el('btnAddCountdown').addEventListener('click', addCountdownTarget);
   el('countdownTypePicker').addEventListener('click', e => {
     const btn = e.target.closest('.day-opt'); if(!btn) return;
@@ -296,13 +301,20 @@ export function setupEvents() {
         if(!granted) { e.target.checked = false; showToast('Aktifkan izin notifikasi dulu'); return; }
       }
       await KV.set('prayer_reminder_enabled', e.target.checked);
-      showToast(e.target.checked ? '🕌 Reminder sholat aktif' : 'Reminder sholat dimatikan');
+      let msg = e.target.checked ? '🕌 Reminder sholat aktif' : 'Reminder sholat dimatikan';
+      if(e.target.checked) {
+        if(!(await KV.get('prayer_coords', null))) msg = 'Atur lokasi dulu supaya reminder sholat bisa dijadwalkan';
+        else await ensureExactAlarmAllowed();
+      }
+      await syncPrayerNotifications(true);
+      showToast(msg);
     });
   }
   const _prayerReminderMin = el('prayerReminderMinutes');
   if(_prayerReminderMin) {
     _prayerReminderMin.addEventListener('change', async e => {
       await KV.set('prayer_reminder_minutes', parseInt(e.target.value));
+      await syncPrayerNotifications(true);
       showToast('Pengaturan reminder disimpan');
     });
   }

@@ -95,7 +95,7 @@ function renderWeeklyReviewModal(review) {
   const startFmt = fmtShort(review.mondayStr+'T12:00:00');
   const endFmt   = fmtShort(review.sunday+'T12:00:00');
 
-  el('weeklyReviewTitle').textContent = '📊 Weekly Review';
+  el('weeklyReviewTitle').textContent = '📊 Ulasan Mingguan';
   el('weeklyReviewRange').textContent = `${startFmt} — ${endFmt}`;
 
   const habitRows = review.habits.slice(0,6).map(h => `

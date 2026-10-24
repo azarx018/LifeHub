@@ -117,25 +117,84 @@ input[type=checkbox]:not(.toggle input):active{transform:scale(.86)}
 
 
 /* ===== TAHAP 1 — Dashboard & Todo ===== */
-/* Dashboard: urutan kartu ala prototype lewat CSS order (HTML & JS tidak dipindah) */
-.score-card{order:-6;grid-column:span 2;color:#fff;border-radius:30px;padding:22px;background:radial-gradient(90% 120% at 0% 0%,#6b8f6c,transparent 62%),linear-gradient(150deg,#3a573d,#1e3322);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 24px 50px -18px rgba(30,60,35,.6)}
-.score-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
-.score-lbl{font-size:.78rem;font-weight:600;opacity:.72}
-.score-big{font-size:3.1rem;font-weight:720;letter-spacing:-.045em;line-height:1.05;font-variant-numeric:tabular-nums}
+/* ===== Dashboard v6.7: header + skor, aksi cepat, kartu geser, grid ===== */
+.dashboard-hero{display:block;padding:18px 18px 48px;border-radius:32px;min-height:0;margin-bottom:0;position:relative;overflow:hidden}
+.hero-top{display:flex;align-items:center;gap:12px;position:relative;z-index:3}
+.hero-avatar{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.3);display:grid;place-items:center;font-weight:750;font-size:1.05rem;color:#fff;flex:none}
+.hero-top .greeting-block{flex:1;min-width:0}
+.greeting-time{font-size:.74rem;opacity:.8}
+.greeting-name{font-size:1.25rem;font-weight:740;letter-spacing:-.02em;line-height:1.15}
+.greeting-date{font-size:.7rem;opacity:.7}
+.live-clock{font-size:1.15rem;font-weight:700;letter-spacing:-.02em}
+.dashboard-hero .score-card{display:block;order:0;grid-column:auto;background:none;box-shadow:none;border-radius:0;padding:0;margin-top:24px;position:relative;z-index:3;color:#fff}
+.score-row{display:flex;justify-content:space-between;align-items:flex-end}
+.score-lbl{font-size:.78rem;font-weight:600;opacity:.75}
+.score-big{font-size:3.4rem;font-weight:720;letter-spacing:-.05em;line-height:1;margin-top:4px;font-variant-numeric:tabular-nums}
 .score-big small{font-size:1.2rem;font-weight:700;opacity:.65;letter-spacing:0;margin-left:2px}
-.score-chip{font-size:.74rem;font-weight:650;padding:7px 12px;border-radius:99px;background:rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
-.score-card .prog-top b{color:rgba(255,255,255,.85)}
-.score-card .prog-track{background:rgba(255,255,255,.14)}
-.water-quick-card{order:-5}
-.sleep-quick-card{order:-4}
-.mood-card{order:-3;grid-column:span 2}
+.score-chip{font-size:.74rem;font-weight:650;padding:7px 12px;border-radius:99px;background:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.22)}
+.seg-bar{display:flex;gap:4px;margin-top:18px}
+.seg-cell{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.2);overflow:hidden}
+.seg-fill{height:100%;width:100%;border-radius:99px;transform-origin:left;transform:scaleX(var(--p,0));transition:transform .9s cubic-bezier(.2,.8,.2,1)}
+.seg-legend{display:flex;justify-content:space-between;gap:6px;margin-top:10px;font-size:.68rem;font-weight:600}
+.seg-legend span{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.seg-legend i{width:7px;height:7px;border-radius:50%;flex:none}
+.seg-legend b{font-weight:650;opacity:.75}
+.quick-actions{position:relative;z-index:4;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:-32px 12px 0;padding:14px 6px 12px;background:var(--surface);border-radius:26px;box-shadow:0 0 0 .5px var(--border),0 18px 40px -16px rgba(20,40,25,.35)}
+.qa{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:.72rem;font-weight:600;color:var(--text2);padding:2px 0;transition:transform .25s cubic-bezier(.3,1.5,.5,1)}
+.qa:active{transform:scale(.92)}
+.qa-ic{width:48px;height:48px;border-radius:16px;display:grid;place-items:center}
+.qa-ic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.qa-green{background:var(--tint-sage);color:var(--primary)}
+.qa-blue{background:var(--tint-blue);color:#3f84c4}
+.qa-peach{background:var(--tint-peach);color:#d9824f}
+.qa-lav{background:var(--tint-lav);color:#7a6fd0}
+[data-theme="dark"] .qa-green{color:var(--primary-light)}
+[data-theme="dark"] .qa-blue{color:#7ab8ec}
+[data-theme="dark"] .qa-peach{color:#f0a67a}
+[data-theme="dark"] .qa-lav{color:#b0a6f0}
+.dash-sec-head{display:flex;justify-content:space-between;align-items:baseline;margin:26px 4px 12px}
+.dash-sec-head h3{font-size:1.05rem;font-weight:720;letter-spacing:-.025em}
+.dash-scroller{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px 16px;padding:2px 18px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.dash-scroller::-webkit-scrollbar{display:none}
+.sc-card{flex:0 0 148px;scroll-snap-align:start;text-align:left;color:#fff;border-radius:24px;padding:14px;display:flex;flex-direction:column;min-height:132px;position:relative;overflow:hidden;box-shadow:0 14px 30px -14px rgba(20,30,20,.5);transition:transform .25s cubic-bezier(.3,1.5,.5,1)}
+.sc-card:active{transform:scale(.96)}
+.sc-card::after{content:"";position:absolute;width:110px;height:110px;right:-40px;top:-50px;border-radius:50%;background:rgba(255,255,255,.12);pointer-events:none}
+.sc-ic{width:30px;height:30px;border-radius:10px;background:rgba(255,255,255,.2);display:grid;place-items:center;margin-bottom:auto}
+.sc-ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.sc-lbl{font-size:.72rem;font-weight:600;opacity:.85;margin-top:14px}
+.sc-val{font-size:1.5rem;font-weight:720;letter-spacing:-.035em;font-variant-numeric:tabular-nums;line-height:1.15}
+.sc-sub{font-size:.66rem;opacity:.7}
+.sc-todo{background:linear-gradient(150deg,#5a8a5e,#2f4a33)}
+.sc-habit{background:linear-gradient(150deg,#8a7fd6,#5b50b8)}
+.sc-sholat{background:linear-gradient(150deg,#3f9c8f,#27705f)}
+.sc-air{background:linear-gradient(150deg,#4f94d4,#2c68ad)}
+.sc-tidur{background:linear-gradient(150deg,#5d6fb8,#34447f)}
+.hero-celestial{top:92px!important;right:22px!important;width:34px!important;height:34px!important}
+.dash-scroller{scroll-padding-left:18px}
+/* Grid di bawahnya: kartu daftar selebar layar, mood + tidur berdampingan */
+.water-quick-card{display:none}
+.todos-card{order:1;grid-column:span 2}
+.habits-card{order:2;grid-column:span 2}
+.mood-card{order:3;grid-column:span 1}
+.sleep-quick-card{order:4;grid-column:span 1}
+.prayer-countdown-card{order:5;grid-column:span 2}
+.sholat-card{order:6;grid-column:span 2}
+.insight-card{order:7}
+.countdown-card{order:8}
+.pixel-card{order:9;grid-column:span 2}
+.quote-card{order:10}
+.stats-quick-card{order:11}
 .mood-row{justify-content:space-between}
-.prayer-countdown-card{order:-2}
-.sholat-card{order:1}
-.pixel-card{order:2;grid-column:span 2}
-.insight-card,.countdown-card{order:3}
-.quote-card{order:4}
-.stats-quick-card{order:5}
+
+/* Mobile: hamburger dihapus (semua halaman terjangkau lewat tab bawah + Lainnya) */
+@media (max-width:767px){.menu-btn{display:none}.topbar-title{padding-left:2px}}
+
+/* Todo multi-hari */
+.badge-span{color:var(--primary)!important;font-weight:650}
+[data-theme="dark"] .badge-span{color:var(--primary-light)!important}
+.todo-item.virtual{opacity:.55}
+.todo-item.virtual .todo-check{pointer-events:none}
+.form-hint{font-size:.74rem;color:var(--text3);margin-top:6px;line-height:1.4}
 
 /* Todo: daftar satu kartu, baris dengan garis tipis */
 .todo-list{gap:0;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:2px 16px}
@@ -237,4 +296,43 @@ a.more-row:active{background:var(--bg3)}
 .more-t{flex:1;font-weight:600;font-size:.96rem}
 .more-chev{width:16px;height:16px;fill:none;stroke:var(--text3);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 
+.sholat-hint{font-size:.74rem;color:var(--text3);margin:10px 4px 0;line-height:1.5}
+.btn-link{background:none;border:0;padding:0;color:var(--primary);font:inherit;font-weight:650;text-decoration:underline;cursor:pointer}
+[data-theme="dark"] .btn-link{color:var(--primary-light)}
+.todo-missed-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(155deg,var(--tint-peach),color-mix(in srgb,var(--tint-peach),var(--surface) 45%));border-radius:16px;padding:11px 14px;margin-bottom:12px;font-size:.82rem;font-weight:600}
+.todo-missed-bar[hidden]{display:none}
+.todo-subs{margin-top:8px;display:grid;gap:6px}
+.todo-sub{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--text2)}
+.todo-sub.done span{text-decoration:line-through;opacity:.6}
+.todo-sub input[type=checkbox]{width:16px;height:16px}
+.todo-sub input[type=checkbox]::after{width:7px;height:4px;margin-top:-1px}
+.todo-meta .btn-link{font-size:.72rem}
+/* ===== Keterbacaan & area ketuk (v6.7) ===== */
+.hw-day{font-size:.68rem}
+.sc-sub{font-size:.72rem}
+.sc-lbl{font-size:.76rem}
+.seg-legend{font-size:.72rem}
+.qa{font-size:.76rem}
+.todo-badge{font-size:.72rem}
+.habit-streak{font-size:.78rem}
+.score-chip{font-size:.78rem}
+.todo-actions .icon-btn,.habit-stats-row .icon-btn{position:relative}
+.todo-actions .icon-btn::after,.habit-stats-row .icon-btn::after{content:"";position:absolute;inset:-8px}
+.habit-check-btn{width:40px;height:40px}
+.sholat-toggle{width:36px;height:36px}
+.todo-check{width:24px;height:24px}
+.more-row select{min-width:122px;max-width:150px;padding-right:26px}
+
+/* ===== Mode hemat: tanpa blur kaca di HP kelas bawah ===== */
+.lite .topbar,.lite .bottom-nav,.lite .modal,.lite .sheet{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface)}
+.lite .modal-backdrop{background:rgba(5,8,5,.6)}
+
+/* ===== Fallback WebView lama (tanpa color-mix): tint datar ===== */
+@supports not (background:color-mix(in srgb,red,blue)){
+  .water-quick-card{background:var(--tint-blue)}
+  .sleep-quick-card,.countdown-card{background:var(--tint-lav)}
+  .mood-card,.todo-missed-bar{background:var(--tint-peach)}
+  .prayer-countdown-card,.insight-card,.sholat-summary{background:var(--tint-sage)}
+  .quote-card{background:var(--tint-yel)}
+}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}

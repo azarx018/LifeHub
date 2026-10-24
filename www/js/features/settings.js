@@ -116,8 +116,8 @@ export async function renderSettings() {
   renderCountdownSettings();
   const nameInput = el('settingName');
   if(nameInput) { nameInput.value = S.settings.name; nameInput.addEventListener('change', () => { S.settings.name = nameInput.value.trim()||'Azhar'; saveSettings(); }); }
-  const dm = el('darkModeToggle');
-  if(dm) { dm.checked = S.settings.darkMode; }
+  const tm = el('themeMode');
+  if(tm) tm.value = getThemeMode();
 
   // Prayer reminder state
   const prayerEnabled = await KV.get('prayer_reminder_enabled', false);
@@ -151,11 +151,36 @@ export function saveSettings() {
   KV.set('lifehub_settings', S.settings);
   applySettings();
 }
+// Mode tema: 'auto' (ikuti sistem) | 'light' | 'dark'. Pengguna lama hanya punya
+// `darkMode` (boolean): true = tetap gelap, selain itu ikut sistem. (Jangan simpan
+// themeMode di default state, nanti menimpa pilihan gelap pengguna lama saat merge.)
+export function getThemeMode() {
+  const m = S.settings.themeMode;
+  if (m === 'auto' || m === 'light' || m === 'dark') return m;
+  return S.settings.darkMode ? 'dark' : 'auto';
+}
+export function isDarkNow() {
+  const m = getThemeMode();
+  return m === 'dark' || (m === 'auto' && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+}
+let _themeBound = false;
+function bindSystemTheme() {
+  if (_themeBound || !window.matchMedia) return;
+  _themeBound = true;
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (getThemeMode() === 'auto') applySettings(); });
+}
+export function setThemeMode(m) {
+  S.settings.themeMode = m;
+  S.settings.darkMode = (m === 'dark');
+  saveSettings();
+}
 export function applySettings() {
-  document.documentElement.setAttribute('data-theme', S.settings.darkMode ? 'dark' : '');
+  const dark = isDarkNow();
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : '');
   // Warna status bar browser/PWA ikut tema (v6.7.0)
   const tc = document.querySelector('meta[name="theme-color"]');
-  if (tc) tc.setAttribute('content', S.settings.darkMode ? '#0a0e0a' : '#f3f4ee');
+  if (tc) tc.setAttribute('content', dark ? '#0a0e0a' : '#f3f4ee');
+  bindSystemTheme();
 }
 export async function exportData() {
   const data = {};

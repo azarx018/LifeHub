@@ -53,6 +53,8 @@ const ASSETS = [
   './js/features/stats.js',
   './js/features/settings.js',
   './js/features/more.js',
+  './js/core/prayerCalc.js',
+  './js/core/todoRules.js',
   './js/charts/donut.js',
   './js/charts/line.js',
   './js/features/game/engine.js',

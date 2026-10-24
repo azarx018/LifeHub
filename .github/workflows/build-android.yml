@@ -87,6 +87,33 @@ jobs:
             echo "Permission lokasi sudah ada, skip."
           fi
 
+      - name: Tambah permission alarm presisi untuk reminder sholat
+        # Reminder sholat dijadwalkan sebagai alarm native (tetap bunyi walau app
+        # ditutup). Android 12+ butuh izin alarm presisi, kalau tidak notifikasi bisa
+        # telat beberapa menit. USE_EXACT_ALARM otomatis diberikan di Android 13+
+        # (APK ini di-sideload, bukan lewat Play Store); SCHEDULE_EXACT_ALARM untuk
+        # Android 12/12L; RECEIVE_BOOT_COMPLETED supaya jadwal bertahan setelah restart.
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "android.permission.SCHEDULE_EXACT_ALARM" "$MANIFEST"; then
+            sed -i '/<manifest /a\\    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />' "$MANIFEST"
+            echo "Permission SCHEDULE_EXACT_ALARM ditambahkan."
+          else
+            echo "Permission SCHEDULE_EXACT_ALARM sudah ada, skip."
+          fi
+          if ! grep -q "android.permission.USE_EXACT_ALARM" "$MANIFEST"; then
+            sed -i '/<manifest /a\\    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />' "$MANIFEST"
+            echo "Permission USE_EXACT_ALARM ditambahkan."
+          else
+            echo "Permission USE_EXACT_ALARM sudah ada, skip."
+          fi
+          if ! grep -q "android.permission.RECEIVE_BOOT_COMPLETED" "$MANIFEST"; then
+            sed -i '/<manifest /a\\    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />' "$MANIFEST"
+            echo "Permission RECEIVE_BOOT_COMPLETED ditambahkan."
+          else
+            echo "Permission RECEIVE_BOOT_COMPLETED sudah ada, skip."
+          fi
+
       - name: Tambah permission & FileProvider paths untuk in-app APK update installer
         # Sama seperti geolocation di atas: @capawesome-team/capacitor-file-opener
         # (dipakai buat buka APK hasil download dengan Android Package Installer,
@@ -207,17 +234,19 @@ jobs:
       - name: Ambil changelog versi ini dari log.md (buat isi GitHub Release)
         id: changelog
         run: |
+          awk -v ver="${{ steps.appver.outputs.version }}" '
+            BEGIN{found=0}
+            /^## v/{
+              if(found){exit}
+              if($0 ~ "## v" ver){found=1; print; next}
+              next
+            }
+            found{print}
+          ' log.md > /tmp/changelog.txt || true
           {
             echo "body<<CHANGELOG_EOF"
-            awk -v ver="${{ steps.appver.outputs.version }}" '
-              BEGIN{found=0}
-              /^## v/{
-                if(found){exit}
-                if($0 ~ "## v" ver){found=1; print; next}
-                next
-              }
-              found{print}
-            ' log.md
+            # Fallback: kalau versi ini belum punya entri di log.md, jangan bikin release kosong
+            if [ -s /tmp/changelog.txt ]; then cat /tmp/changelog.txt; else echo "Rilis v${{ steps.appver.outputs.version }} (belum ada catatan di log.md)"; fi
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
 

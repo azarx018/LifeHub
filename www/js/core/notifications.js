@@ -144,3 +144,63 @@ export async function scheduleNotifications() {
   scheduleAt(morningTime, '🌅 Selamat Pagi, LifeHub!', `Hei ${name}! Semangat hari ini. Cek habit & todo kamu yuk 💪`);
   scheduleAt(eveningTime, '🌙 Rekap Malam LifeHub', `Hai ${name}! Jangan lupa rekap aktivitas hari ini sebelum tidur 📋`);
 }
+
+// ===== Reminder sholat (v6.7) =====
+// ID 3000..3069 = 7 hari x 10 slot (lihat buildPrayerSchedule). Tetap/fixed supaya
+// bisa di-cancel & dijadwalkan ulang tanpa menumpuk duplikat.
+const NOTIF_ID_PRAYER_BASE = 3000;
+const NOTIF_PRAYER_SLOTS = 70;
+let _prayerTimers = [];
+
+export async function cancelPrayerNotifications() {
+  _prayerTimers.forEach(t => clearTimeout(t));
+  _prayerTimers = [];
+  if (await isNativeApp()) {
+    try {
+      const LocalNotifications = getPlugin('LocalNotifications');
+      await LocalNotifications.cancel({ notifications: Array.from({ length: NOTIF_PRAYER_SLOTS }, (_, i) => ({ id: NOTIF_ID_PRAYER_BASE + i })) });
+    } catch (e) { /* belum pernah dijadwalkan, aman diabaikan */ }
+  }
+}
+
+// items: [{ slot, at: Date, title, body }]
+export async function schedulePrayerNotifications(items) {
+  await cancelPrayerNotifications();
+  if (!items.length) return;
+  if (await isNativeApp()) {
+    try {
+      const LocalNotifications = getPlugin('LocalNotifications');
+      // Channel khusus prioritas tinggi supaya muncul sebagai heads-up + getar.
+      try { await LocalNotifications.createChannel({ id: 'prayer', name: 'Waktu Sholat', description: 'Pengingat waktu sholat', importance: 4, visibility: 1, vibration: true }); } catch (e) { /* bukan Android / sudah ada */ }
+      await LocalNotifications.schedule({
+        notifications: items.map(it => ({
+          id: NOTIF_ID_PRAYER_BASE + it.slot,
+          title: it.title, body: it.body, channelId: 'prayer',
+          schedule: { at: it.at, allowWhileIdle: true }
+        }))
+      });
+    } catch (e) { console.error('schedulePrayerNotifications (native) gagal', e); }
+    return;
+  }
+  // Web/PWA: timer biasa, hanya jalan selama app terbuka (maks 24 jam ke depan).
+  const now = Date.now();
+  items.forEach(it => {
+    const delay = it.at.getTime() - now;
+    if (delay > 0 && delay < 24 * 3600 * 1000) _prayerTimers.push(setTimeout(() => showPushNotif(it.title, it.body), delay));
+  });
+}
+
+// Android 12+: tanpa izin "Alarm & pengingat", alarm bisa telat beberapa menit.
+// Dipanggil saat user MENGAKTIFKAN reminder (aksi eksplisit), bukan diam-diam.
+export async function ensureExactAlarmAllowed() {
+  if (!(await isNativeApp())) return true;
+  try {
+    const LocalNotifications = getPlugin('LocalNotifications');
+    if (typeof LocalNotifications.checkExactNotificationSetting !== 'function') return true;
+    const s = await LocalNotifications.checkExactNotificationSetting();
+    if (s.exact_alarm === 'granted') return true;
+    showToast('Izinkan "Alarm & pengingat" supaya notifikasi sholat tepat waktu');
+    await LocalNotifications.changeExactNotificationSetting();
+    return false;
+  } catch (e) { return true; }
+}
