@@ -83,6 +83,11 @@ lapisan CSS paling aman dan paling ringan. Tidak ada perubahan data/DB.
 - **Rilis**: `log.md` dikeluarkan dari `.gitignore` (sudah ter-track), langkah release notes di CI punya teks cadangan bila entri versi belum ada, panduan build ditambahkan, `npm test` (18 tes).
 - Dicek dan tidak perlu diubah: animasi pixel Dashboard sudah berhenti saat pindah halaman (`PIXEL.stop()`).
 
+### 🔄 Dashboard real-time (tahap 6, dari tes di HP)
+**File diubah**: `core/db.js`, `features/dashboard.js`, `index.html`, `css/theme.css`
+- Dihapus: bagian "Ringkasan hari ini" (kartu geser) karena infonya dobel dengan legenda di hero.
+- **Skor di hero kini real-time.** Sebelumnya hanya air yang menyegarkan hero; tambah todo dari tombol plus, centang habit, atau centang sholat di Dashboard tidak mengubah hero (dan todo baru juga tidak muncul di kartu Todo). `DB.put/delete` sekarang memberi sinyal `lh:data-changed` (digabung 60 ms) untuk todos/habits/habitLogs/waterLogs/sholatLogs. Dashboard menanggapinya: todo berubah = render ulang Dashboard; habit/sholat/air = hanya skor (`renderDashboardScore`, fungsi baru), supaya animasi centang kartunya tidak terganggu.
+
 ### 🐛 Bug yang ketemu & diperbaiki saat review (semua halaman, dark + light)
 - Bar chart Statistik & Sleep runtuh jadi garis tipis (bug lama sejak sebelum v6.7): tinggi persen butuh induk bertinggi pasti. Sekarang bar tampil normal. (`css/theme.css`)
 - Input warna di form Habit sempat jatuh ke hitam karena default `var(--primary)` tidak valid untuk `<input type=color>`; diganti hex `#5f8d62`.

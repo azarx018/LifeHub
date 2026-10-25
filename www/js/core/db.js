@@ -44,6 +44,17 @@ async function resolveImpl() {
   return mod.DB;
 }
 
+// Beri tahu UI bahwa data berubah (v6.7). Dashboard memakainya untuk menyegarkan skor &
+// daftar secara real-time tanpa tiap fitur harus ingat memanggilnya. Digabung (debounce)
+// supaya banyak tulisan beruntun (impor data, todo berulang) hanya memicu satu kali.
+const _WATCHED = new Set(['todos', 'habits', 'habitLogs', 'waterLogs', 'sholatLogs']);
+let _notifyT = 0;
+function notifyChanged(store) {
+  if (typeof document === 'undefined' || !_WATCHED.has(store)) return;
+  clearTimeout(_notifyT);
+  _notifyT = setTimeout(() => document.dispatchEvent(new CustomEvent('lh:data-changed', { detail: { store } })), 60);
+}
+
 export const DB = {
   _stores,
 
@@ -52,8 +63,8 @@ export const DB = {
     await _impl.init();
   },
   getAll(store) { return _impl.getAll(store); },
-  put(store, item) { return _impl.put(store, item); },
-  delete(store, id) { return _impl.delete(store, id); },
+  put(store, item) { return Promise.resolve(_impl.put(store, item)).then(r => { notifyChanged(store); return r; }); },
+  delete(store, id) { return Promise.resolve(_impl.delete(store, id)).then(r => { notifyChanged(store); return r; }); },
   get(store, id) { return _impl.get(store, id); },
-  clearAll() { return _impl.clearAll(); }
+  clearAll() { return Promise.resolve(_impl.clearAll()).then(r => { notifyChanged('todos'); return r; }); }
 };

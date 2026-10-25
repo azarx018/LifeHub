@@ -139,7 +139,7 @@ input[type=checkbox]:not(.toggle input):active{transform:scale(.86)}
 .seg-legend span{display:flex;align-items:center;gap:5px;white-space:nowrap}
 .seg-legend i{width:7px;height:7px;border-radius:50%;flex:none}
 .seg-legend b{font-weight:650;opacity:.75}
-.quick-actions{position:relative;z-index:4;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:-32px 12px 0;padding:14px 6px 12px;background:var(--surface);border-radius:26px;box-shadow:0 0 0 .5px var(--border),0 18px 40px -16px rgba(20,40,25,.35)}
+.quick-actions{position:relative;z-index:4;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:-32px 12px 16px;padding:14px 6px 12px;background:var(--surface);border-radius:26px;box-shadow:0 0 0 .5px var(--border),0 18px 40px -16px rgba(20,40,25,.35)}
 .qa{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:.72rem;font-weight:600;color:var(--text2);padding:2px 0;transition:transform .25s cubic-bezier(.3,1.5,.5,1)}
 .qa:active{transform:scale(.92)}
 .qa-ic{width:48px;height:48px;border-radius:16px;display:grid;place-items:center}
@@ -152,25 +152,7 @@ input[type=checkbox]:not(.toggle input):active{transform:scale(.86)}
 [data-theme="dark"] .qa-blue{color:#7ab8ec}
 [data-theme="dark"] .qa-peach{color:#f0a67a}
 [data-theme="dark"] .qa-lav{color:#b0a6f0}
-.dash-sec-head{display:flex;justify-content:space-between;align-items:baseline;margin:26px 4px 12px}
-.dash-sec-head h3{font-size:1.05rem;font-weight:720;letter-spacing:-.025em}
-.dash-scroller{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px 16px;padding:2px 18px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.dash-scroller::-webkit-scrollbar{display:none}
-.sc-card{flex:0 0 148px;scroll-snap-align:start;text-align:left;color:#fff;border-radius:24px;padding:14px;display:flex;flex-direction:column;min-height:132px;position:relative;overflow:hidden;box-shadow:0 14px 30px -14px rgba(20,30,20,.5);transition:transform .25s cubic-bezier(.3,1.5,.5,1)}
-.sc-card:active{transform:scale(.96)}
-.sc-card::after{content:"";position:absolute;width:110px;height:110px;right:-40px;top:-50px;border-radius:50%;background:rgba(255,255,255,.12);pointer-events:none}
-.sc-ic{width:30px;height:30px;border-radius:10px;background:rgba(255,255,255,.2);display:grid;place-items:center;margin-bottom:auto}
-.sc-ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-.sc-lbl{font-size:.72rem;font-weight:600;opacity:.85;margin-top:14px}
-.sc-val{font-size:1.5rem;font-weight:720;letter-spacing:-.035em;font-variant-numeric:tabular-nums;line-height:1.15}
-.sc-sub{font-size:.66rem;opacity:.7}
-.sc-todo{background:linear-gradient(150deg,#5a8a5e,#2f4a33)}
-.sc-habit{background:linear-gradient(150deg,#8a7fd6,#5b50b8)}
-.sc-sholat{background:linear-gradient(150deg,#3f9c8f,#27705f)}
-.sc-air{background:linear-gradient(150deg,#4f94d4,#2c68ad)}
-.sc-tidur{background:linear-gradient(150deg,#5d6fb8,#34447f)}
 .hero-celestial{top:92px!important;right:22px!important;width:34px!important;height:34px!important}
-.dash-scroller{scroll-padding-left:18px}
 /* Grid di bawahnya: kartu daftar selebar layar, mood + tidur berdampingan */
 .water-quick-card{display:none}
 .todos-card{order:1;grid-column:span 2}
@@ -309,8 +291,6 @@ a.more-row:active{background:var(--bg3)}
 .todo-meta .btn-link{font-size:.72rem}
 /* ===== Keterbacaan & area ketuk (v6.7) ===== */
 .hw-day{font-size:.68rem}
-.sc-sub{font-size:.72rem}
-.sc-lbl{font-size:.76rem}
 .seg-legend{font-size:.72rem}
 .qa{font-size:.76rem}
 .todo-badge{font-size:.72rem}
